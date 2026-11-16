@@ -498,11 +498,27 @@
 
     # Glowny numer wersji Javy (np. 21) albo 0, gdy programu nie da sie uruchomic.
     function WersjaJavy([string]$program) {
+        return (ProbaJavy $program).Wersja
+    }
+
+    # Uruchamia "java -version". Wersja 0 oznacza, ze Java nie wystartowala; Tekst mowi wtedy dlaczego.
+    function ProbaJavy([string]$program) {
         try {
             $wynik = Uruchom $program '-version'
-            if ($wynik.Tekst -match 'version "(\d+)') { return [int]$Matches[1] }
-        } catch { }
-        return 0
+            if ($wynik.Tekst -match 'version "(\d+)') { return @{ Wersja = [int]$Matches[1]; Tekst = '' } }
+            return @{ Wersja = 0; Tekst = $wynik.Tekst }
+        } catch {
+            return @{ Wersja = 0; Tekst = $_.Exception.Message }
+        }
+    }
+
+    # Najwazniejsze zdanie z bledu Javy, np. o braku pamieci, bez pustych wierszy i znakow #.
+    function PowodBleduJavy([string]$tekst) {
+        $wiersze = @($tekst -split "`r?`n" | ForEach-Object { $_.Trim(' ', '#') } | Where-Object { $_ })
+        $pamiec = @($wiersze | Where-Object { $_ -match 'memory|paging file' })
+        if ($pamiec.Count -gt 0) { return $pamiec[0] }
+        if ($wiersze.Count -gt 0) { return $wiersze[0] }
+        return ''
     }
 
     function Rozpakuj([string]$archiwum, [string]$cel, [int]$pasek, [double]$od, [double]$do) {
@@ -556,8 +572,13 @@
             Postep 0 0.3 (T 'szukam w systemie')
             $systemowa = Get-Command java -ErrorAction SilentlyContinue
             if ($systemowa) {
-                $wersja = WersjaJavy $systemowa.Source
+                $proba = ProbaJavy $systemowa.Source
+                $wersja = $proba.Wersja
                 if ($wersja -ge $MinJava) { $S.Java = $systemowa.Source; Zakoncz 0 ("Java $wersja " + (T 'z systemu')); return }
+                if ($wersja -eq 0) {
+                    # Java jest, ale nie startuje (np. brak pamieci). Pobranie drugiej Javy tu nie pomoze.
+                    throw ((T 'Java jest zainstalowana, ale nie daje się uruchomić. Zamknij część programów i spróbuj ponownie. Powód: ') + (PowodBleduJavy $proba.Tekst))
+                }
             }
         }
         # Javy nie ma albo jest za stara: przenosna Java trafia do folderu gry.
