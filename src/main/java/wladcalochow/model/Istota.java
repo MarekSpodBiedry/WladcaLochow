@@ -107,6 +107,13 @@ public abstract class Istota implements Serializable {
         return lup;
     }
 
+    /** Oddaje całe noszone złoto (np. potwór po walce do skarbca). Zwraca oddaną kwotę. */
+    public int oddajZloto() {
+        int kwota = zloto;
+        zloto = 0;
+        return kwota;
+    }
+
     public void dodajZloto(int kwota) {
         zloto += Math.max(0, kwota);
     }

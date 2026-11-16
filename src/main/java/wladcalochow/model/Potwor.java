@@ -31,9 +31,12 @@ public abstract class Potwor extends Istota {
         return (getSilaAtaku() + getPunktyZycia()) * procentMorale();
     }
 
-    /** Ile żołdu brakuje potworowi dzisiaj: żołd bazowy pomniejszony o łup z walk. */
+    /**
+     * Ile żołdu należy się potworowi dzisiaj. Łup z walki nie pomniejsza już żołdu: po walce trafia
+     * do skarbca (wcześniej zostawał przy potworze i przepadał razem z nim, gdy potwór ginął).
+     */
     public int nalezneDzis() {
-        return Math.max(0, zold - lupDnia);
+        return zold;
     }
 
     public void otrzymajZold() {

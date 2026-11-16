@@ -105,16 +105,10 @@ class MinistrowieTest {
     }
 
     @Test
-    void lupZWalkPomniejszaWyplateZoldu() {
+    void lupZWalkNiePomniejszaWyplatyZoldu() {
         ork.zabierzZloto(new Rycerz("Sir", 15, 80, 90, 15));
         Skarbiec skarbiec = new Skarbiec(100);
         new RozrzutnyMinisterFinansow("R", 0, 0).wyplacZold(skarbiec, List.of(ork), new Random(1));
-        assertEquals(90, skarbiec.getZloto(), "żołd 25 minus 15 łupu");
-        assertEquals(25, ork.nalezneDzis(), "od następnego dnia znów pełny żołd");
-
-        ork.zabierzZloto(new Rycerz("Bogacz", 15, 80, 90, 60));
-        new RozrzutnyMinisterFinansow("R", 0, 0).wyplacZold(skarbiec, List.of(ork), new Random(1));
-        assertEquals(90, skarbiec.getZloto(), "łup większy niż żołd: skarbiec nic nie płaci");
-        assertEquals(75, ork.getZloto(), "potwór zatrzymuje nadwyżkę dla siebie");
+        assertEquals(75, skarbiec.getZloto(), "pełny żołd 25: łup idzie do skarbca, a nie zamiast żołdu");
     }
 }

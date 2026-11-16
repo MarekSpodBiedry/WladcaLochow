@@ -26,6 +26,33 @@ class BalansTest {
     }
 
     @Test
+    void lupyTrafiajaDoSkarbcaAPotworyNieNoszaZlota() {
+        int dniZLupem = 0;
+        for (long ziarno = 1; ziarno <= 20; ziarno++) {
+            Gra gra = Gra.nowa(ziarno);
+            gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));
+            for (int dzien = 0; dzien < 25 && !gra.czyKoniecGry(); dzien++) {
+                gra.rozegrajPoranek();
+                if (gra.rozpocznijObrone() != null) {
+                    while (!gra.getDzien().getWalka().czyZakonczona()) {
+                        gra.krokWalki();
+                    }
+                }
+                gra.zakonczDzien();
+                assertTrue(gra.getLoch().getListaPotworow().stream().allMatch(p -> p.getZloto() == 0),
+                        "po dniu żaden potwór nie trzyma złota");
+                if (gra.getDzien().getBilans().getLupy() > 0) {
+                    dniZLupem++;
+                }
+                if (!gra.czyKoniecGry()) {
+                    gra.rozpocznijDzien();
+                }
+            }
+        }
+        assertTrue(dniZLupem > 0, "łupy z walk trafiły do skarbca");
+    }
+
+    @Test
     void zerowyDochodJestRzadki() {
         Gra gra = Gra.nowa(3);
         gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));

@@ -13,6 +13,7 @@ public class BilansDnia implements Serializable {
     private int zlotoWieczorem;
     private int dochod;
     private int kopalnia;
+    private int lupy;
     private int pensje;
     private int rekrutacja;
     private int rozkazy;
@@ -36,6 +37,14 @@ public class BilansDnia implements Serializable {
     void przychod(int dochodDnia, int zKopalni) {
         dochod += dochodDnia;
         kopalnia += zKopalni;
+    }
+
+    void lupy(int kwota) {
+        lupy += kwota;
+    }
+
+    public int getLupy() {
+        return lupy;
     }
 
     void pensja(int kwota) {
@@ -156,7 +165,7 @@ public class BilansDnia implements Serializable {
     }
 
     public int przychody() {
-        return dochod + kopalnia;
+        return dochod + kopalnia + lupy;
     }
 
     public int wydatki() {

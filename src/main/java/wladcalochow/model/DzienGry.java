@@ -259,6 +259,16 @@ public class DzienGry implements Serializable {
         if (!polegli.isEmpty()) {
             zdarzenia.add(new Informacja("Polegli w obronie lochu: " + imiona(polegli) + ".", Ton.ZLY));
         }
+        // Łupy zdobyte przez ocalałe potwory trafiają do skarbca.
+        int lupy = 0;
+        for (Potwor potwor : loch.getListaPotworow()) {
+            lupy += potwor.oddajZloto();
+        }
+        if (lupy > 0) {
+            skarbiec.wplac(lupy);
+            bilans.lupy(lupy);
+            zdarzenia.add(new Informacja("Łupy z walki trafiają do skarbca: +" + lupy + " złota.", Ton.ZLOTO));
+        }
         // Uciekinierzy wracają do lochu, ogłuszeni dochodzą do siebie.
         loch.getListaPotworow().forEach(Istota::odpocznijPoWalce);
         return zdarzenia;

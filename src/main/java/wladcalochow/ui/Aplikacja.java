@@ -1272,7 +1272,8 @@ public final class Aplikacja {
         wiersze.add(new Dialog.Wiersz("Skarbiec: " + bilans.getZlotoRano() + " → " + bilans.getZlotoWieczorem()
                 + " złota (" + (zmiana >= 0 ? "+" : "") + zmiana + ")", Paleta.ZLOTO));
         wiersze.add(new Dialog.Wiersz("Przychody +" + bilans.przychody() + ": dochód " + bilans.getDochod()
-                + ", kopalnia " + bilans.getKopalnia(), Paleta.ZIELEN));
+                + ", kopalnia " + bilans.getKopalnia() + (bilans.getLupy() > 0 ? ", łupy " + bilans.getLupy() : ""),
+                Paleta.ZIELEN));
         List<String> wydatki = new ArrayList<>();
         pozycja(wydatki, "pensje ministrów", bilans.getPensje());
         pozycja(wydatki, "rekrutacja", bilans.getRekrutacja());

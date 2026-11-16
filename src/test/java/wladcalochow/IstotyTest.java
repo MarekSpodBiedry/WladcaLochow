@@ -139,13 +139,15 @@ class IstotyTest {
     }
 
     @Test
-    void zabojcaZabieraZlotoAPotworLiczyJeNaPoczetZoldu() {
+    void zabojcaZabieraZlotoAleZoldNalezySieCaly() {
         Ork ork = new Ork("Gruk", 14, 60, 70, 20);
         Rycerz rycerz = new Rycerz("Sir", 15, 80, 90, 12);
         assertEquals(12, ork.zabierzZloto(rycerz));
         assertEquals(0, rycerz.getZloto());
         assertEquals(12, ork.getZloto());
-        assertEquals(8, ork.nalezneDzis());
+        assertEquals(20, ork.nalezneDzis(), "łup trafia do skarbca, więc nie pomniejsza żołdu");
+        assertEquals(12, ork.oddajZloto());
+        assertEquals(0, ork.getZloto());
     }
 
     @Test
