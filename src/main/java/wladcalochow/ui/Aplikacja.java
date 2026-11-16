@@ -29,7 +29,7 @@ public final class Aplikacja {
 
     static final int MIN_SZER = 108;
     static final int MIN_WYS = 30;
-    private static final int PANEL_SZER = 40;
+    private static final int PANEL_SZER = 42;
 
     private enum Tryb { MENU, PORANEK, WALKA, WIECZOR, KONIEC_GRY }
 
@@ -264,10 +264,6 @@ public final class Aplikacja {
             boolean zajeta = i < loch.getPorazkiZRzedu();
             x = e.pisz(x, 0, zajeta ? "■" : "□", zajeta ? Paleta.CZERWIEN : Paleta.TEKST_SLABY);
         }
-        if (loch.getWydobycieDoOdebrania() > 0) {
-            String kopalnia = "Kopalnia jutro +" + loch.getWydobycieDoOdebrania() + " ";
-            e.pisz(e.szer - Ekran.szerokosc(kopalnia), 0, kopalnia, Paleta.TURKUS);
-        }
     }
 
     private void etykietaSceny(Ekran e, Walka walka) {
@@ -329,8 +325,10 @@ public final class Aplikacja {
                 + procent(pracy.getNadzorKopalni()) + "%" + nastepcaPracy, tw - 3), Paleta.TEKST_SLABY);
 
         e.ramka(x, y + 8, w, 4, Paleta.RAMKA, Paleta.PANEL, "Loch", Paleta.TURKUS);
-        e.pisz(tx, y + 9, Ekran.przytnij("Limit rekrutacji " + loch.getLimitRekrutacji() + "% skarbca", tw),
-                Paleta.TEKST);
+        int lx = e.pisz(tx, y + 9, "Rekrutacja do " + loch.getLimitRekrutacji() + "%", Paleta.TEKST);
+        if (loch.getWydobycieDoOdebrania() > 0) {
+            e.pisz(lx, y + 9, " · kopalnia jutro +" + loch.getWydobycieDoOdebrania(), Paleta.TURKUS);
+        }
         int ux = tx;
         for (Ulepszenie ulepszenie : Ulepszenie.values()) {
             ux = e.pisz(ux, y + 10, skrotUlepszenia(ulepszenie) + " ", Paleta.TEKST_SLABY);
@@ -366,7 +364,7 @@ public final class Aplikacja {
         }
         int pokazane = istoty.size() <= h ? istoty.size() : h - 1;
         for (int i = 0; i < pokazane; i++) {
-            wierszIstoty(e, x + 1, y + i, w - 2, istoty.get(i), walka);
+            wierszIstoty(e, x + 1, y + i, w - 1, istoty.get(i), walka);
         }
         if (pokazane < istoty.size()) {
             e.pisz(x + 1, y + pokazane, "… i jeszcze " + (istoty.size() - pokazane), Paleta.TEKST_SLABY);
@@ -376,7 +374,7 @@ public final class Aplikacja {
     private void wierszIstoty(Ekran e, int x, int y, int w, Istota istota, Walka walka) {
         boolean aktywna = istota.wWalce();
         if (istota == aktor || istota == cel) {
-            e.wypelnij(x - 1, y, w + 2, 1, Paleta.PANEL_JASNY);
+            e.wypelnij(x - 1, y, w + 1, 1, Paleta.PANEL_JASNY);
         }
         int kolorImienia = !aktywna ? Paleta.TEKST_SLABY : istota == aktor ? Paleta.ZLOTO
                 : istota == cel ? Paleta.CZERWIEN : Paleta.TEKST;

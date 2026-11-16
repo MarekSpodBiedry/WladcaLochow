@@ -1,0 +1,226 @@
+package wladcalochow;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import org.junit.jupiter.api.Test;
+import wladcalochow.model.Bohater;
+import wladcalochow.model.BylejakiMinisterPracy;
+import wladcalochow.model.DzienGry;
+import wladcalochow.model.Goblin;
+import wladcalochow.model.Loch;
+import wladcalochow.model.Ogr;
+import wladcalochow.model.Ork;
+import wladcalochow.model.Potwor;
+import wladcalochow.model.RamboMinisterPracy;
+import wladcalochow.model.RozrzutnyMinisterFinansow;
+import wladcalochow.model.Rycerz;
+import wladcalochow.model.Skarbiec;
+import wladcalochow.model.Walka;
+import wladcalochow.model.Zdarzenie;
+import wladcalochow.model.strategia.Postawa;
+import wladcalochow.model.strategia.RaportZwiadu;
+import wladcalochow.model.strategia.Ulepszenie;
+
+class DzienGryTest {
+
+    private static Loch loch(int zloto) {
+        Loch loch = new Loch(new Skarbiec(zloto));
+        loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Finanse", 0, 0));
+        loch.setMinisterPracy(new RamboMinisterPracy("Kadry", 0, 0, 0));
+        return loch;
+    }
+
+    private static DzienGry dzien(int dochod, List<Potwor> kandydaci, List<Bohater> bohaterowie) {
+        return new DzienGry(1, dochod, kandydaci, bohaterowie, List.of(), List.of(),
+                new RaportZwiadu(0, 0, null, 0));
+    }
+
+    private static void rozegrajWalke(Walka walka) {
+        while (!walka.czyZakonczona()) {
+            walka.krok();
+        }
+    }
+
+    @Test
+    void poranekPrzynosiDochodIZatrudniaWGranicachBudzetu() {
+        Loch loch = loch(100);
+        loch.zatrudnij(new Ork("Stary", 14, 60, 70, 30));
+        Ogr drogi = new Ogr("Drogi", 20, 100, 90, 200);
+        Goblin tani = new Goblin("Tani", 7, 20, 40, 10);
+        DzienGry dzien = dzien(50, List.of(drogi, tani), List.of());
+        dzien.rozegrajPoranek(loch, new Random(1));
+        // 150 złota, żołd załogi 30, więc budżet 120: Rambo chce najpierw ogra za 200 i rezygnuje.
+        assertEquals(150, loch.getSkarbiec().getZloto());
+        assertEquals(1, loch.getListaPotworow().size());
+
+        loch.setMinisterPracy(new BylejakiMinisterPracy("Byle", 0, 0, 0));
+        DzienGry drugi = dzien(0, List.of(drogi, tani), List.of());
+        drugi.rozegrajPoranek(loch, new Random(1));
+        assertEquals(140, loch.getSkarbiec().getZloto(), "Bylejaki pomija ogra i bierze goblina za 10");
+        assertTrue(loch.getListaPotworow().contains(tani));
+    }
+
+    @Test
+    void limitRekrutacjiOgraniczaBudzet() {
+        Loch loch = loch(100);
+        loch.setLimitRekrutacji(0);
+        Goblin tani = new Goblin("Tani", 7, 20, 40, 10);
+        dzien(0, List.of(tani), List.of()).rozegrajPoranek(loch, new Random(1));
+        assertTrue(loch.getListaPotworow().isEmpty());
+        assertEquals(100, loch.getSkarbiec().getZloto());
+    }
+
+    @Test
+    void lochNiePrzyjmujeWiecejPotworowNizMaMiejsc() {
+        Loch loch = loch(10_000);
+        loch.setMinisterPracy(new BylejakiMinisterPracy("Byle", 0, 0, 0));
+        for (int i = 0; i < Loch.POJEMNOSC - 1; i++) {
+            loch.zatrudnij(new Goblin("G" + i, 7, 20, 40, 1));
+        }
+        List<Potwor> kandydaci = List.of(new Goblin("A", 7, 20, 40, 5), new Goblin("B", 7, 20, 40, 5),
+                new Goblin("C", 7, 20, 40, 5));
+        int zlotoPrzed = loch.getSkarbiec().getZloto();
+        dzien(0, kandydaci, List.of()).rozegrajPoranek(loch, new Random(1));
+        assertEquals(Loch.POJEMNOSC, loch.getListaPotworow().size());
+        assertEquals(zlotoPrzed - 5, loch.getSkarbiec().getZloto(), "zapłacono tylko za jednego przyjętego");
+    }
+
+    @Test
+    void gornicyNieWalczaINieDostajaZolduAWydobycieWplywaNastepnegoDnia() {
+        Loch loch = loch(1000);
+        Goblin slaby = new Goblin("Slaby", 6, 20, 40, 10);
+        Ork sredni = new Ork("Sredni", 14, 60, 70, 20);
+        Ogr silny = new Ogr("Silny", 20, 100, 90, 40);
+        List.of(slaby, sredni, silny).forEach(loch::zatrudnij);
+        slaby.zmienMorale(-20);
+        DzienGry dzien = dzien(0, List.of(), List.of());
+        dzien.rozegrajPoranek(loch, new Random(1));
+        assertEquals(List.of(slaby), loch.gornicy(), "Rambo wysyła do kopalni najsłabszego");
+        assertNull(dzien.przygotujObrone(loch, new Random(1), new ArrayList<>()));
+        dzien.rozegrajWieczor(loch, new Random(1));
+        assertEquals(1000 - 60, loch.getSkarbiec().getZloto(), "żołd dostają tylko ork i ogr");
+        assertEquals(13, loch.getWydobycieDoOdebrania(), "(6 + 20) * 50% morale");
+        assertEquals(20, slaby.getMorale(), "górnik nie dostaje żołdu, więc morale mu nie rośnie");
+        assertFalse(slaby.czyWKopalni());
+
+        dzien(0, List.of(), List.of()).rozegrajPoranek(loch, new Random(1));
+        assertEquals(1000 - 60 + 13, loch.getSkarbiec().getZloto());
+    }
+
+    @Test
+    void przekupstwoOdsylaBohaterowBezWalki() {
+        Loch loch = loch(1000);
+        loch.zatrudnij(new Ork("Gruk", 14, 60, 70, 20));
+        loch.setPostawa(Postawa.PRZEKUPSTWO);
+        Rycerz rycerz = new Rycerz("Sir", 16, 80, 90, 10);
+        DzienGry dzien = dzien(0, List.of(), List.of(rycerz));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        int cena = dzien.kosztPrzekupstwa(loch);
+        assertEquals(2 * 16 + 80 / 2, cena);
+        assertNull(dzien.przygotujObrone(loch, new Random(1), new ArrayList<>()));
+        assertEquals(1000 - cena, loch.getSkarbiec().getZloto());
+        assertEquals(0, loch.getPorazkiZRzedu());
+    }
+
+    @Test
+    void gdyNaLapowkeNieStacLochBroniSieNormalnie() {
+        Loch loch = loch(5);
+        loch.zatrudnij(new Ork("Gruk", 14, 60, 70, 0));
+        loch.setPostawa(Postawa.PRZEKUPSTWO);
+        DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 16, 80, 90, 10)));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        assertNotNull(dzien.przygotujObrone(loch, new Random(1), new ArrayList<>()));
+        assertEquals(5, loch.getSkarbiec().getZloto());
+    }
+
+    @Test
+    void pulapkiRaniaBohaterowPrzedWalka() {
+        Loch loch = loch(1000);
+        loch.zatrudnij(new Ork("Gruk", 14, 60, 70, 20));
+        loch.ulepsz(Ulepszenie.PULAPKI);
+        loch.ulepsz(Ulepszenie.PULAPKI);
+        Rycerz rycerz = new Rycerz("Sir", 16, 100, 90, 10);
+        DzienGry dzien = dzien(0, List.of(), List.of(rycerz));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        dzien.przygotujObrone(loch, new Random(1), new ArrayList<>());
+        assertEquals(80, rycerz.getPunktyZycia());
+        assertEquals(90, rycerz.getMorale(), "pułapka nie obniża morale");
+    }
+
+    @Test
+    void odwodZatrzymujePotworyZNiskimMorale() {
+        Loch loch = loch(1000);
+        Ork pewny = new Ork("Pewny", 14, 60, 100, 20);
+        Ork chwiejny = new Ork("Chwiejny", 14, 60, 100, 20);
+        chwiejny.zmienMorale(-60);
+        loch.zatrudnij(pewny);
+        loch.zatrudnij(chwiejny);
+        loch.setPostawa(Postawa.ODWOD);
+        DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 16, 80, 90, 10)));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        Walka walka = dzien.przygotujObrone(loch, new Random(1), new ArrayList<>());
+        assertEquals(List.of(pewny), walka.getObroncy());
+        assertEquals(List.of(chwiejny), walka.getOdwod());
+    }
+
+    @Test
+    void niebronionyLochTraciCalySkarbiec() {
+        Loch loch = loch(400);
+        DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 16, 80, 90, 10)));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        assertNull(dzien.przygotujObrone(loch, new Random(1), new ArrayList<>()));
+        assertEquals(0, loch.getSkarbiec().getZloto());
+        assertEquals(1, loch.getPorazkiZRzedu());
+    }
+
+    @Test
+    void przegranaObronaToPladrowanieAUdanaZerujeLicznikPorazek() {
+        Loch loch = loch(1000);
+        Goblin ofiara = new Goblin("Ofiara", 1, 1, 40, 0);
+        loch.zatrudnij(ofiara);
+        DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 500, 5000, 5000, 10)));
+        dzien.rozegrajPoranek(loch, new Random(2));
+        rozegrajWalke(dzien.przygotujObrone(loch, new Random(2), new ArrayList<>()));
+        List<Zdarzenie> skutki = dzien.zakonczObrone(loch, new Random(2));
+        assertTrue(loch.getSkarbiec().getZloto() < 1000 && loch.getSkarbiec().getZloto() >= 600,
+                "jeden zwycięzca wynosi 20-35% skarbca");
+        assertFalse(loch.getListaPotworow().contains(ofiara), "polegli znikają z lochu");
+        assertEquals(1, loch.getPorazkiZRzedu());
+        assertFalse(skutki.isEmpty());
+
+        loch.zanotujWynikObrony(false);
+        assertFalse(loch.czyZdobyty());
+        loch.zanotujWynikObrony(false);
+        assertTrue(loch.czyZdobyty(), "trzy porażki z rzędu to upadek lochu");
+        loch.zanotujWynikObrony(true);
+        assertEquals(0, loch.getPorazkiZRzedu());
+    }
+
+    @Test
+    void weteranAwansujePoPrzezytychWalkach() {
+        Ork ork = new Ork("Gruk", 10, 100, 70, 20);
+        assertFalse(ork.podsumujWalke());
+        assertFalse(ork.podsumujWalke());
+        assertTrue(ork.podsumujWalke(), "trzecia przeżyta walka daje poziom 2");
+        assertEquals(2, ork.getPoziom());
+        assertEquals(11, ork.getSilaAtaku());
+        assertEquals(110, ork.getMaxPunktyZycia());
+        assertEquals(22, ork.getZold());
+    }
+
+    @Test
+    void ministerBezPensjiOdchodziIZastepujeGoStazysta() {
+        Loch loch = loch(5);
+        loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Drogi", 50, 0.2));
+        dzien(0, List.of(), List.of()).rozegrajPoranek(loch, new Random(1));
+        assertEquals(0, loch.getMinisterFinansow().getPensja());
+        assertEquals(0.0, loch.getMinisterFinansow().getNegocjacje());
+    }
+}
