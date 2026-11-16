@@ -120,7 +120,7 @@ Opcje:
 | Opcja | Znaczenie |
 |---|---|
 | `--ziarno LICZBA` | powtarzalna rozgrywka: to samo ziarno i te same decyzje dają ten sam przebieg |
-| `--zapis PLIK` | inne miejsce zapisu gry (domyślnie `%LOCALAPPDATA%\WladcaLochow\zapis.dat` na Windows, `~/.wladcalochow/zapis.dat` na pozostałych systemach) |
+| `--zapisy FOLDER` | inny folder slotów zapisu (domyślnie `%LOCALAPPDATA%\WladcaLochow\zapisy` na Windows, `~/.wladcalochow/zapisy` na pozostałych systemach) |
 | `--kolory 24` lub `--kolory 256` | wymuszenie trybu kolorów (to samo robi zmienna `WLADCA_KOLORY`) |
 | `--bez-okna` | nie otwieraj nowego okna terminala, nawet gdy gra została uruchomiona bez niego |
 | `--bez-aktualizacji` | nie pytaj GitHuba o nową wersję (to samo robi zmienna `WLADCA_BEZ_AKTUALIZACJI`) |
@@ -174,6 +174,10 @@ Rozkazy Władcy:
 Gra nie ma końca: bohaterów przyciąga bogactwo, a z każdym dniem są silniejsi. Loch upada po trzech
 przegranych obronach z rzędu albo gdy nie ma już ani potworów, ani złota. Wynikiem jest liczba
 przetrwanych dni. Gra zapisuje się sama każdego ranka i po każdym rozkazie.
+
+Gra ma 10 slotów zapisu i nigdy sama ich nie usuwa. Przegrana rozgrywka zostaje w swoim slocie,
+a „Wczytaj” pozwala obejrzeć jej ostatni dzień. Gdy wszystkie sloty są zajęte, nowa gra pyta,
+który zapis zastąpić.
 
 Szczegółowy opis istot, ministrów i walki: [docs/Opis_gry.docx](docs/Opis_gry.docx).
 

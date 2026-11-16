@@ -102,7 +102,7 @@ class UkladEkranuTest {
             gra.wykonajRozkaz(new Rozkaz.ZmianaMinistraPracy(gra.getDzien().getKandydaciPracy().get(0)));
 
             Aplikacja aplikacja = new Aplikacja(new SztucznaKonsola(szer, wys),
-                    katalog.resolve("skrajny-" + ziarno + ".dat"), ziarno);
+                    katalog.resolve("skrajny-" + ziarno), ziarno);
             aplikacja.pokazGre(gra);
             aplikacja.rysuj();
             sprawdz(aplikacja, szer, wys, "skrajny stan, ziarno " + ziarno);
@@ -134,7 +134,7 @@ class UkladEkranuTest {
     private void grajISprawdzaj(Path katalog, int szer, int wys, int rozgrywki, int kroki) {
         for (int numer = 1; numer <= rozgrywki; numer++) {
             Random bot = new Random(numer * 977L + szer);
-            Path zapis = katalog.resolve("zapis-" + numer + ".dat");
+            Path zapis = katalog.resolve("zapisy-" + numer);
             Aplikacja aplikacja = new Aplikacja(new SztucznaKonsola(szer, wys), zapis, (long) numer);
             if (numer % 2 == 0) {
                 aplikacja.ustawNowaWersje("12.34.56");

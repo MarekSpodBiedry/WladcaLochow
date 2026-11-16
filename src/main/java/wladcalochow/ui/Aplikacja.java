@@ -3,6 +3,8 @@ package wladcalochow.ui;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -62,8 +64,13 @@ public final class Aplikacja {
     private static final String AKCENT_TYTULU =
         "                                                                ▄▀         ";
 
+    private static final DateTimeFormatter FORMAT_DATY =
+            DateTimeFormatter.ofPattern("d.MM.yyyy HH:mm").withZone(ZoneId.systemDefault());
+
     private final Konsola terminal;
-    private final Path plikZapisu;
+    private final Path folderZapisow;
+    /** Slot bieżącej rozgrywki (1..10) albo 0, gdy gra jeszcze nie ma slotu. */
+    private int slot;
     private final Long ziarnoStartowe;
     private final List<Strefa> strefy = new ArrayList<>();
     private final Map<Character, Runnable> skroty = new HashMap<>();
@@ -82,8 +89,8 @@ public final class Aplikacja {
     private boolean radaWalkiPokazana;
     private volatile String nowaWersja;
 
-    public Aplikacja(Path plikZapisu, Long ziarnoStartowe, boolean sprawdzajAktualizacje) throws IOException {
-        this(new TerminalGry(), plikZapisu, ziarnoStartowe);
+    public Aplikacja(Path folderZapisow, Long ziarnoStartowe, boolean sprawdzajAktualizacje) throws IOException {
+        this(new TerminalGry(), folderZapisow, ziarnoStartowe);
         if (sprawdzajAktualizacje) {
             Aktualizacje.sprawdzWTle(Wersja.numer())
                     .thenAccept(wynik -> wynik.ifPresent(wersja -> nowaWersja = wersja));
@@ -95,14 +102,14 @@ public final class Aplikacja {
      * Używane przez opcję --sprawdz, którą wywołuje instalator.
      */
     public static void autotest() throws IOException {
-        Path zapis = Files.createTempFile("wladca-lochow-autotest", ".dat");
+        Path folder = Files.createTempDirectory("wladca-lochow-autotest");
+        Path zapis = ZapisGry.plikSlotu(folder, 1);
         try {
-            Files.delete(zapis);
-            Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(MIN_SZER + 16, MIN_WYS + 8), zapis, 1L);
+            Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(MIN_SZER + 16, MIN_WYS + 8), folder, 1L);
             aplikacja.rysuj();
             Gra stan = Gra.nowa(1L);
             stan.rozpocznij(stan.getStartowiFinansow().get(0), stan.getStartowiPracy().get(0));
-            aplikacja.pokazGre(stan);
+            aplikacja.pokazGre(stan, 1);
             aplikacja.rysuj();
             for (int krok = 0; krok < 5000 && stan.getNumerDnia() < 6 && !stan.czyKoniecGry(); krok++) {
                 aplikacja.obsluz(new Wejscie.Klawisz(Wejscie.Rodzaj.ENTER));
@@ -111,17 +118,18 @@ public final class Aplikacja {
             if (stan.getNumerDnia() < 6 && !stan.czyKoniecGry()) {
                 throw new IllegalStateException("Rozgrywka nie posuwa się naprzód");
             }
-            if (!stan.czyKoniecGry() && ZapisGry.wczytaj(zapis).isEmpty()) {
+            if (ZapisGry.wczytaj(zapis).isEmpty()) {
                 throw new IllegalStateException("Zapis gry nie daje się odczytać");
             }
         } finally {
             Files.deleteIfExists(zapis);
+            Files.deleteIfExists(folder);
         }
     }
 
-    Aplikacja(Konsola terminal, Path plikZapisu, Long ziarnoStartowe) {
+    Aplikacja(Konsola terminal, Path folderZapisow, Long ziarnoStartowe) {
         this.terminal = terminal;
-        this.plikZapisu = plikZapisu;
+        this.folderZapisow = folderZapisow;
         this.ziarnoStartowe = ziarnoStartowe;
     }
 
@@ -155,6 +163,12 @@ public final class Aplikacja {
 
     /** Pokazuje podany stan gry tak, jakby został właśnie wczytany (poranek). */
     void pokazGre(Gra stan) {
+        pokazGre(stan, 0);
+    }
+
+    /** Jak wyżej, a dalsze zapisy tej rozgrywki trafiają do podanego slotu (0: bez zapisu). */
+    void pokazGre(Gra stan, int numerSlotu) {
+        slot = numerSlotu;
         gra = stan;
         tryb = Tryb.PORANEK;
         dialog = null;
@@ -295,12 +309,15 @@ public final class Aplikacja {
         int sw = Math.min(e.szer - 4, 120);
         Scena.rysuj(e, (e.szer - sw) / 2, ty + 8, sw, Scena.Pora.NOC, List.of(), List.of(), null, null);
 
-        boolean jestZapis = ZapisGry.istnieje(plikZapisu);
+        List<ZapisGry.Slot> sloty = ZapisGry.sloty(folderZapisow);
+        boolean doKontynuacji = ZapisGry.ostatniDoKontynuacji(sloty).isPresent();
+        boolean jestZapis = sloty.stream().anyMatch(ZapisGry.Slot::zajety);
         List<Guzik> guziki = new ArrayList<>();
-        guziki.add(new Guzik('k', "Kontynuuj", false, jestZapis, this::kontynuuj));
+        guziki.add(new Guzik('k', "Kontynuuj", false, doKontynuacji, this::kontynuuj));
         if (dostepna != null) {
             guziki.add(new Guzik('a', "Aktualizuj", false, true, this::aktualizuj, true));
         }
+        guziki.add(new Guzik('w', "Wczytaj", false, jestZapis, this::dialogWczytaj));
         guziki.add(new Guzik('o', "O grze", false, true, this::dialogOGrze));
         guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
         guziki.add(new Guzik('q', "Wyjście", false, true, this::wyjdzZGry));
@@ -636,6 +653,12 @@ public final class Aplikacja {
                 guziki.add(new Guzik('q', "Wyjdź", false, true, this::wyjdzDoMenu));
                 guziki.add(new Guzik('\n', "Następny dzień", true, true, this::nastepnyDzien));
             }
+            case KONIEC_GRY -> {
+                guziki.add(new Guzik('s', "Podsumowanie", false, true, this::dialogKoniec));
+                guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
+                guziki.add(new Guzik('q', "Menu", false, true, this::wyjdzDoMenu));
+                guziki.add(new Guzik('\n', "Nowa gra", true, true, this::nowaGra));
+            }
             default -> {
             }
         }
@@ -710,20 +733,98 @@ public final class Aplikacja {
         strona(Doradca.O_GRZE, 0, "Nowa gra", this::nowaGra, this::zamknijDialog);
     }
 
+    /** Nowa gra trafia do pierwszego wolnego slotu. Gdy wszystkie są zajęte, gracz wybiera, który zastąpić. */
     private void nowaGra() {
         komunikat = null;
-        dialog = new Dialog("Nowa gra",
+        List<ZapisGry.Slot> sloty = ZapisGry.sloty(folderZapisow);
+        var wolny = ZapisGry.wolnySlot(sloty);
+        if (wolny.isPresent()) {
+            nowaGraWSlocie(wolny.get().numer());
+            return;
+        }
+        List<Dialog.Opcja> opcje = new ArrayList<>();
+        for (ZapisGry.Slot zajety : sloty) {
+            opcje.add(new Dialog.Opcja(opisSlotu(zajety), "Ta rozgrywka zostanie zastąpiona nową.", true,
+                    () -> nowaGraWSlocie(zajety.numer())));
+        }
+        dialog = new Dialog("Nowa gra · wszystkie sloty zajęte",
+                List.of("Wszystkie " + ZapisGry.SLOTY + " slotów jest zajętych. Wybierz slot, którego zapis "
+                        + "zastąpi nowa gra. Pozostałe zapisy zostaną bez zmian."),
+                opcje, this::zamknijDialog);
+    }
+
+    private void nowaGraWSlocie(int numer) {
+        dialog = new Dialog("Nowa gra · slot " + numer,
                 List.of("Samouczek prowadzi przez pierwsze 5 dni: możliwości pojawiają się po jednej, "
                         + "a doradca tłumaczy, co się dzieje."),
                 List.of(new Dialog.Opcja("Z samouczkiem", "Zalecane za pierwszym razem.", true,
-                                () -> zacznijNowaGre(true)),
+                                () -> zacznijNowaGre(true, numer)),
                         new Dialog.Opcja("Bez samouczka", "Wszystkie rozkazy dostępne od pierwszego dnia.", true,
-                                () -> zacznijNowaGre(false))),
+                                () -> zacznijNowaGre(false, numer))),
                 this::zamknijDialog);
     }
 
-    private void zacznijNowaGre(boolean samouczek) {
+    /** Opis slotu w jednym wierszu: numer, dzień, stan i data zapisu. */
+    private static String opisSlotu(ZapisGry.Slot s) {
+        String naglowek = "Slot " + s.numer() + " · ";
+        if (!s.zajety()) {
+            return naglowek + "pusty";
+        }
+        String data = s.czas() == null ? "" : " · " + FORMAT_DATY.format(s.czas().toInstant());
+        if (s.gra().isEmpty()) {
+            return naglowek + "zapis nie do odczytania" + data;
+        }
+        Gra g = s.gra().get();
+        String stan = g.czyKoniecGry() ? "przegrana w dniu " + g.getNumerDnia()
+                : g.getDzien() == null ? "przed pierwszym dniem" : "dzień " + g.getNumerDnia();
+        return naglowek + stan + " · złoto " + g.getLoch().getSkarbiec().getZloto() + " · potwory "
+                + g.getLoch().getListaPotworow().size() + data;
+    }
+
+    /** Lista slotów: rozgrywkę w toku można kontynuować, przegraną obejrzeć. */
+    private void dialogWczytaj() {
+        komunikat = null;
+        List<Dialog.Opcja> opcje = new ArrayList<>();
+        for (ZapisGry.Slot s : ZapisGry.sloty(folderZapisow)) {
+            String szczegol = !s.zajety() ? ""
+                    : s.gra().isEmpty() ? "Pochodzi z innej wersji gry albo jest uszkodzony."
+                    : s.doKontynuacji() ? "Graj dalej."
+                    : "Rozgrywka zakończona: można obejrzeć jej ostatni dzień.";
+            boolean aktywna = s.gra().isPresent() && (s.doKontynuacji() || s.gra().get().czyKoniecGry());
+            opcje.add(new Dialog.Opcja(opisSlotu(s), szczegol, aktywna, () -> wczytajSlot(s)));
+        }
+        dialog = new Dialog("Wczytaj grę",
+                List.of("Gra nigdy sama nie usuwa zapisów. Przegrane rozgrywki zostają w swoich slotach."),
+                opcje, this::zamknijDialog);
+    }
+
+    private void wczytajSlot(ZapisGry.Slot s) {
+        dialog = null;
+        komunikat = null;
+        Gra wczytana = s.gra().orElse(null);
+        if (wczytana == null) {
+            komunikat = "Nie udało się wczytać slotu " + s.numer() + ".";
+            return;
+        }
+        slot = s.numer();
+        gra = wczytana;
+        aktor = null;
+        cel = null;
+        przewiniecie = 0;
+        if (wczytana.czyKoniecGry()) {
+            tryb = Tryb.KONIEC_GRY;
+            dialogKoniec();
+        } else {
+            tryb = Tryb.PORANEK;
+            radaPoranna();
+        }
+    }
+
+    private void zacznijNowaGre(boolean samouczek, int numerSlotu) {
         long ziarno = ziarnoStartowe != null ? ziarnoStartowe : System.nanoTime();
+        slot = numerSlotu;
+        // Do wyboru ministrów w tle jest menu: nowa gra nie ma jeszcze dnia, więc pulpitu nie da się narysować.
+        tryb = Tryb.MENU;
         gra = samouczek ? Gra.nowaZSamouczkiem(ziarno) : Gra.nowa(ziarno);
         if (samouczek) {
             strona(Doradca.STRONY, 0, "Wybierz ministrów", this::wybierzMinistraFinansow, this::porzucNowaGre);
@@ -826,32 +927,33 @@ public final class Aplikacja {
     private void porzucNowaGre() {
         dialog = null;
         gra = null;
+        slot = 0;
         tryb = Tryb.MENU;
     }
 
+    /** Wczytuje ostatnio zapisaną rozgrywkę w toku. */
     private void kontynuuj() {
-        var wczytana = ZapisGry.wczytaj(plikZapisu);
-        if (wczytana.isEmpty() || wczytana.get().czyKoniecGry() || wczytana.get().getDzien() == null) {
-            komunikat = "Nie udało się wczytać zapisu (pochodzi z innej wersji gry albo jest uszkodzony).";
+        var ostatni = ZapisGry.ostatniDoKontynuacji(ZapisGry.sloty(folderZapisow));
+        if (ostatni.isEmpty()) {
+            komunikat = "Nie ma rozgrywki do kontynuowania.";
             return;
         }
-        komunikat = null;
-        gra = wczytana.get();
-        tryb = Tryb.PORANEK;
-        aktor = null;
-        cel = null;
-        przewiniecie = 0;
-        radaPoranna();
+        wczytajSlot(ostatni.get());
     }
 
+    /**
+     * Rozgrywka w toku zapisuje się tylko rano, między rozkazami; dzień w toku odtworzy się z tego samego ziarna.
+     * Zakończona rozgrywka zapisuje się w stanie z chwili upadku lochu i zostaje w slocie.
+     */
     private void zapisz() {
-        // Zapis powstaje tylko rano, między rozkazami; dzień w toku odtworzy się z tego samego ziarna.
-        if (gra == null || gra.czyKoniecGry() || gra.getDzien() == null
-                || gra.getDzien().getFaza() != DzienGry.Faza.PORANEK) {
+        if (gra == null || slot == 0 || gra.getDzien() == null) {
+            return;
+        }
+        if (!gra.czyKoniecGry() && gra.getDzien().getFaza() != DzienGry.Faza.PORANEK) {
             return;
         }
         try {
-            ZapisGry.zapisz(gra, plikZapisu);
+            ZapisGry.zapisz(gra, ZapisGry.plikSlotu(folderZapisow, slot));
         } catch (IOException | RuntimeException e) {
             komunikat = "Nie udało się zapisać gry: " + e.getMessage();
         }
@@ -870,6 +972,7 @@ public final class Aplikacja {
         zapiszPrzyWyjsciu();
         dialog = null;
         gra = null;
+        slot = 0;
         tryb = Tryb.MENU;
     }
 
@@ -942,25 +1045,28 @@ public final class Aplikacja {
         przewiniecie = 0;
         if (gra.czyKoniecGry()) {
             tryb = Tryb.KONIEC_GRY;
-            ZapisGry.usun(plikZapisu);
-            dialog = new Dialog("Loch upadł",
-                    List.of("Twoje panowanie trwało " + gra.getNumerDnia() + " dni.",
-                            "Ziarno tej rozgrywki: " + gra.getZiarno()),
-                    List.of(new Dialog.Opcja("Nowa gra", "Zacznij od nowa z innym losowaniem.", true, () -> {
-                                dialog = null;
-                                tryb = Tryb.MENU;
-                                nowaGra();
-                            }),
-                            new Dialog.Opcja("Menu główne", "Wróć do ekranu tytułowego.", true, () -> {
-                                dialog = null;
-                                gra = null;
-                                tryb = Tryb.MENU;
-                            })),
-                    null);
+            zapisz();
+            dialogKoniec();
         } else {
             tryb = Tryb.WIECZOR;
             dialogPodsumowanie();
         }
+    }
+
+    /** Okno po upadku lochu. Zapis zostaje w slocie, a loch można obejrzeć po zamknięciu okna. */
+    private void dialogKoniec() {
+        List<String> wstep = new ArrayList<>();
+        wstep.add("Twoje panowanie trwało " + gra.getNumerDnia() + " dni.");
+        if (slot > 0) {
+            wstep.add("Zapis tej rozgrywki zostaje w slocie " + slot + ". Możesz do niego wrócić przez Wczytaj.");
+        }
+        wstep.add("Ziarno tej rozgrywki: " + gra.getZiarno());
+        dialog = new Dialog("Loch upadł", wstep,
+                List.of(new Dialog.Opcja("Obejrzyj loch", "Zamknij okno i zobacz ostatni dzień.", true,
+                                this::zamknijDialog),
+                        new Dialog.Opcja("Nowa gra", "Zacznij od nowa z innym losowaniem.", true, this::nowaGra),
+                        new Dialog.Opcja("Menu główne", "Wróć do ekranu tytułowego.", true, this::wyjdzDoMenu)),
+                this::zamknijDialog);
     }
 
     /** Wieczorne podsumowanie: bilans złota, wynik obrony i zmiany w załodze. */

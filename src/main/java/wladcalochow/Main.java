@@ -14,7 +14,7 @@ import wladcalochow.ui.Aplikacja;
  * Punkt wejścia. Uruchomiona w terminalu gra startuje od razu; uruchomiona bez terminala
  * (np. dwuklikiem w plik .jar) najpierw otwiera okno terminala i startuje w nim.
  *
- * Opcje: --ziarno LICZBA (powtarzalna rozgrywka), --zapis PLIK (inne miejsce zapisu),
+ * Opcje: --ziarno LICZBA (powtarzalna rozgrywka), --zapisy FOLDER (inny folder slotów zapisu),
  * --kolory 24|256 (wymuszenie trybu kolorów), --bez-okna (nie otwieraj nowego okna terminala),
  * --bez-aktualizacji (nie pytaj GitHuba o nową wersję), --wersja (wypisz numer wersji),
  * --sprawdz (autotest bez terminala, używany przez instalator).
@@ -25,7 +25,7 @@ public final class Main {
     }
 
     public static void main(String[] args) {
-        Path plikZapisu = ZapisGry.domyslnaSciezka();
+        Path folderZapisow = null;
         Long ziarno = null;
         boolean wOknie = false;
         boolean bezOkna = false;
@@ -38,9 +38,9 @@ public final class Main {
                         ziarno = Long.parseLong(args[++i]);
                         dlaOkna.addAll(List.of("--ziarno", args[i]));
                     }
-                    case "--zapis" -> {
-                        plikZapisu = Path.of(args[++i]);
-                        dlaOkna.addAll(List.of("--zapis", plikZapisu.toAbsolutePath().toString()));
+                    case "--zapisy" -> {
+                        folderZapisow = Path.of(args[++i]);
+                        dlaOkna.addAll(List.of("--zapisy", folderZapisow.toAbsolutePath().toString()));
                     }
                     case Uruchamiacz.OPCJA_W_OKNIE -> wOknie = true;
                     case Uruchamiacz.OPCJA_KOLORY -> {
@@ -68,7 +68,7 @@ public final class Main {
                 }
             }
         } catch (RuntimeException e) {
-            zakonczZBledem("Użycie: java -jar wladca-lochow.jar [--ziarno LICZBA] [--zapis PLIK] [--kolory 24|256]"
+            zakonczZBledem("Użycie: java -jar wladca-lochow.jar [--ziarno LICZBA] [--zapisy FOLDER] [--kolory 24|256]"
                     + " [--bez-okna] [--bez-aktualizacji] [--wersja] [--sprawdz]",
                     wOknie, 2);
             return;
@@ -90,7 +90,10 @@ public final class Main {
         }
         aktualizacje &= Wersja.czyWydanie() && System.getenv("WLADCA_BEZ_AKTUALIZACJI") == null;
         try {
-            new Aplikacja(plikZapisu, ziarno, aktualizacje).uruchom();
+            if (folderZapisow == null) {
+                folderZapisow = ZapisGry.domyslnyFolder();
+            }
+            new Aplikacja(folderZapisow, ziarno, aktualizacje).uruchom();
         } catch (IOException | RuntimeException e) {
             zakonczZBledem("Gra zakończyła się błędem: " + e.getMessage(), wOknie, 1);
         }
