@@ -16,10 +16,11 @@ class UruchamiaczTest {
 
     @Test
     void polecenieGryUruchamiaTenSamJarZOpcjaOkna() {
-        List<String> polecenie = Uruchamiacz.polecenieGry(Path.of("/opt/java/bin/java"),
-                Path.of("/gry/wladca-lochow.jar"), List.of("--ziarno", "7"));
-        assertEquals(List.of("/opt/java/bin/java", "-jar", "/gry/wladca-lochow.jar", "--w-oknie", "--ziarno", "7"),
-                polecenie);
+        // Path zapisuje ścieżkę po swojemu (na Windows z ukośnikami wstecznymi), więc oczekiwane ścieżki też idą przez Path.
+        Path java = Path.of("/opt/java/bin/java");
+        Path jar = Path.of("/gry/wladca-lochow.jar");
+        List<String> polecenie = Uruchamiacz.polecenieGry(java, jar, List.of("--ziarno", "7"));
+        assertEquals(List.of(java.toString(), "-jar", jar.toString(), "--w-oknie", "--ziarno", "7"), polecenie);
     }
 
     @Test
