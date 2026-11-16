@@ -713,11 +713,18 @@ namespace WladcaLochow {
             Postep 2 0.85 (T 'gra jest aktualna')
         } else {
             $czesc = $Jar + '.part'
-            PobierzPlik $S.AdresJar $czesc 2 0.04 0.85 (T 'gra')
+            try {
+                PobierzPlik $S.AdresJar $czesc 2 0.04 0.85 (T 'gra')
+            } catch {
+                # Przerwane pobieranie nie zostawia w folderze gry niepelnego pliku.
+                if (Test-Path -LiteralPath $czesc) { Remove-Item -LiteralPath $czesc -Force }
+                throw
+            }
             try {
                 if (Test-Path -LiteralPath $Jar) { Remove-Item -LiteralPath $Jar -Force }
                 Move-Item -LiteralPath $czesc -Destination $Jar
             } catch {
+                if (Test-Path -LiteralPath $czesc) { Remove-Item -LiteralPath $czesc -Force }
                 throw (T 'Nie da się podmienić pliku gry. Zamknij grę, jeśli jest uruchomiona, i spróbuj ponownie.')
             }
         }
