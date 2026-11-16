@@ -237,6 +237,26 @@ class DzienGryTest {
     }
 
     @Test
+    void uciekinierWracaDoLochuPoWalce() {
+        Loch loch = loch(1000);
+        Ork tchorz = new Ork("Tchorz", 1, 1000, 1, 20);
+        Ogr mocarz = new Ogr("Mocarz", 900, 9000, 90, 40);
+        loch.zatrudnij(tchorz);
+        loch.zatrudnij(mocarz);
+        DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 1, 1500, 5000, 10),
+                new Rycerz("Sir Drugi", 1, 1500, 5000, 10)));
+        dzien.rozegrajPoranek(loch, new Random(3));
+        Walka walka = dzien.przygotujObrone(loch, new Random(3), new ArrayList<>());
+        tchorz.zmienMorale(-1);
+        rozegrajWalke(walka);
+        assertTrue(tchorz.czyUciekla(), "ork z zerowym morale ucieka z pola walki");
+        dzien.zakonczObrone(loch, new Random(3));
+        assertTrue(loch.getListaPotworow().contains(tchorz), "uciekinier zostaje w załodze");
+        assertFalse(tchorz.czyUciekla(), "po walce nie jest już oznaczony jako uciekinier");
+        assertTrue(tchorz.wWalce());
+    }
+
+    @Test
     void weteranAwansujePoPrzezytychWalkach() {
         Ork ork = new Ork("Gruk", 10, 100, 70, 20);
         assertFalse(ork.podsumujWalke());

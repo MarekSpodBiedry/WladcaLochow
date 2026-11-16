@@ -81,6 +81,12 @@ public abstract class Istota implements Serializable {
         uciekla = false;
     }
 
+    /** Wywoływane po walce: istota, która uciekła z pola bitwy, wraca do siebie. */
+    public void odpocznijPoWalce() {
+        ogluszona = false;
+        uciekla = false;
+    }
+
     // ---- metody wspólne ----
 
     public void otrzymajAtak(int obrazenia) {

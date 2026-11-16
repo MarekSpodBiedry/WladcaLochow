@@ -982,7 +982,8 @@ public final class Aplikacja {
     private Dialog.Opcja opcjaRozkazu(String etykieta, String szczegol, Rozkaz rozkaz) {
         String powod = gra.powodOdmowy(rozkaz);
         int koszt = gra.koszt(rozkaz);
-        String dopisek = powod != null ? " · " + powod : koszt > 0 ? " · koszt " + koszt + " złota" : "";
+        String dopisek = powod != null ? " Niedostępne: " + powod.toLowerCase() + "."
+                : koszt > 0 ? " Koszt: " + koszt + " złota." : "";
         return new Dialog.Opcja(etykieta, szczegol + dopisek, powod == null, () -> {
             gra.wykonajRozkaz(rozkaz);
             zapisz();
@@ -992,21 +993,33 @@ public final class Aplikacja {
 
     private void dialogMinistrowie() {
         DzienGry dzien = gra.getDzien();
+        MinisterFinansow obecnyFinansow = gra.getLoch().getMinisterFinansow();
+        MinisterPracy obecnyPracy = gra.getLoch().getMinisterPracy();
         List<Dialog.Opcja> opcje = new ArrayList<>();
         for (MinisterFinansow kandydat : dzien.getKandydaciFinansow()) {
             opcje.add(opcjaRozkazu("Finanse: " + kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    "pensja " + kandydat.getPensja() + " · negocjacje -" + procent(kandydat.getNegocjacje()) + "%",
-                    new Rozkaz.ZmianaMinistraFinansow(kandydat)));
+                    kandydat.opisStylu() + " " + statystyki(kandydat), new Rozkaz.ZmianaMinistraFinansow(kandydat)));
         }
         for (MinisterPracy kandydat : dzien.getKandydaciPracy()) {
             opcje.add(opcjaRozkazu("Kadry: " + kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    "pensja " + kandydat.getPensja() + " · werbunek +" + kandydat.getWerbunek() + " · kopalnia +"
-                            + procent(kandydat.getNadzorKopalni()) + "%",
-                    new Rozkaz.ZmianaMinistraPracy(kandydat)));
+                    kandydat.opisStylu() + " " + statystyki(kandydat), new Rozkaz.ZmianaMinistraPracy(kandydat)));
         }
         dialog = new Dialog("Zmiana ministra",
-                List.of(wstepRozkazow(), "Nowy minister obejmuje urząd od jutra. Kandydaci zmieniają się co dzień."),
+                List.of(wstepRozkazow(), "Nowy minister obejmuje urząd od jutra. Kandydaci zmieniają się co dzień.",
+                        "Teraz finanse: " + obecnyFinansow.getImie() + " · " + obecnyFinansow.nazwaRodzaju() + ". "
+                                + statystyki(obecnyFinansow),
+                        "Teraz kadry: " + obecnyPracy.getImie() + " · " + obecnyPracy.nazwaRodzaju() + ". "
+                                + statystyki(obecnyPracy)),
                 opcje, this::zamknijDialog);
+    }
+
+    private static String statystyki(MinisterFinansow minister) {
+        return "Pensja " + minister.getPensja() + ", zniżki " + procent(minister.getNegocjacje()) + "%.";
+    }
+
+    private static String statystyki(MinisterPracy minister) {
+        return "Pensja " + minister.getPensja() + ", werbunek +" + minister.getWerbunek() + ", kopalnia +"
+                + procent(minister.getNadzorKopalni()) + "%.";
     }
 
     private void dialogBudzet() {

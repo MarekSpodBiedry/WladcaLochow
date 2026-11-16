@@ -248,6 +248,8 @@ public class DzienGry implements Serializable {
         if (!polegli.isEmpty()) {
             zdarzenia.add(new Informacja("Polegli w obronie lochu: " + imiona(polegli) + ".", Ton.ZLY));
         }
+        // Uciekinierzy wracają do lochu, ogłuszeni dochodzą do siebie.
+        loch.getListaPotworow().forEach(Istota::odpocznijPoWalce);
         return zdarzenia;
     }
 
