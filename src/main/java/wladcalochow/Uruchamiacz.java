@@ -166,6 +166,28 @@ public final class Uruchamiacz {
         return false;
     }
 
+    /** Polecenie otwierające na Windows nowe okno PowerShella z instalatorem, który aktualizuje grę. */
+    public static List<String> polecenieAktualizacji() {
+        return List.of("cmd.exe", "/c", "start", TYTUL, "powershell.exe", "-NoProfile", "-ExecutionPolicy",
+                "Bypass", "-Command", Aktualizacje.POLECENIE_INSTALATORA);
+    }
+
+    /** Uruchamia instalator w nowym oknie. Zwraca true, jeśli udało się go wystartować. */
+    public static boolean uruchomAktualizacje() {
+        if (wykryjSystem() != SystemOperacyjny.WINDOWS) {
+            return false;
+        }
+        try {
+            new ProcessBuilder(polecenieAktualizacji())
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     /**
      * Próbuje otworzyć okno terminala z grą.
      *

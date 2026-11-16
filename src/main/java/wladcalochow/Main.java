@@ -15,7 +15,9 @@ import wladcalochow.ui.Aplikacja;
  * (np. dwuklikiem w plik .jar) najpierw otwiera okno terminala i startuje w nim.
  *
  * Opcje: --ziarno LICZBA (powtarzalna rozgrywka), --zapis PLIK (inne miejsce zapisu),
- * --kolory 24|256 (wymuszenie trybu kolorów), --bez-okna (nie otwieraj nowego okna terminala).
+ * --kolory 24|256 (wymuszenie trybu kolorów), --bez-okna (nie otwieraj nowego okna terminala),
+ * --bez-aktualizacji (nie pytaj GitHuba o nową wersję), --wersja (wypisz numer wersji),
+ * --sprawdz (autotest bez terminala, używany przez instalator).
  */
 public final class Main {
 
@@ -27,6 +29,7 @@ public final class Main {
         Long ziarno = null;
         boolean wOknie = false;
         boolean bezOkna = false;
+        boolean aktualizacje = true;
         List<String> dlaOkna = new ArrayList<>();
         try {
             for (int i = 0; i < args.length; i++) {
@@ -49,12 +52,24 @@ public final class Main {
                         dlaOkna.addAll(List.of(Uruchamiacz.OPCJA_KOLORY, tryb));
                     }
                     case "--bez-okna" -> bezOkna = true;
+                    case "--bez-aktualizacji" -> {
+                        aktualizacje = false;
+                        dlaOkna.add("--bez-aktualizacji");
+                    }
+                    case "--wersja" -> {
+                        System.out.println("Wladca Lochow " + Wersja.numer());
+                        System.exit(0);
+                    }
+                    case "--sprawdz" -> {
+                        sprawdz();
+                        return;
+                    }
                     default -> throw new IllegalArgumentException("Nieznana opcja: " + args[i]);
                 }
             }
         } catch (RuntimeException e) {
             zakonczZBledem("Użycie: java -jar wladca-lochow.jar [--ziarno LICZBA] [--zapis PLIK] [--kolory 24|256]"
-                    + " [--bez-okna]",
+                    + " [--bez-okna] [--bez-aktualizacji] [--wersja] [--sprawdz]",
                     wOknie, 2);
             return;
         }
@@ -73,10 +88,28 @@ public final class Main {
             System.out.print("\u001b[8;" + Uruchamiacz.WIERSZE + ";" + Uruchamiacz.KOLUMNY + "t");
             System.out.flush();
         }
+        aktualizacje &= Wersja.czyWydanie() && System.getenv("WLADCA_BEZ_AKTUALIZACJI") == null;
         try {
-            new Aplikacja(plikZapisu, ziarno).uruchom();
+            new Aplikacja(plikZapisu, ziarno, aktualizacje).uruchom();
         } catch (IOException | RuntimeException e) {
             zakonczZBledem("Gra zakończyła się błędem: " + e.getMessage(), wOknie, 1);
+        }
+        // Jawne zakończenie: wątki sieciowe sprawdzania aktualizacji nie mogą trzymać otwartego okna.
+        System.exit(0);
+    }
+
+    /**
+     * Autotest dla instalatora: rozgrywa kilka dni bez terminala i sprawdza zapis gry.
+     * Kod wyjścia 0 oznacza, że gra działa na tym komputerze.
+     */
+    private static void sprawdz() {
+        try {
+            Aplikacja.autotest();
+            System.out.println("OK " + Wersja.numer());
+            System.exit(0);
+        } catch (Throwable e) {
+            System.out.println("BLAD " + e);
+            System.exit(1);
         }
     }
 

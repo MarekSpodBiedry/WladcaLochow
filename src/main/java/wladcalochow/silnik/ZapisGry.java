@@ -14,8 +14,27 @@ public final class ZapisGry {
     private ZapisGry() {
     }
 
+    /**
+     * Miejsce zapisu: na Windows folder gry w AppData (ten sam, do którego trafia gra z instalatora),
+     * na pozostałych systemach ukryty katalog w folderze domowym.
+     */
     public static Path domyslnaSciezka() {
-        return Path.of(System.getProperty("user.home"), ".wladcalochow", "zapis.dat");
+        Path stara = Path.of(System.getProperty("user.home"), ".wladcalochow", "zapis.dat");
+        String appData = System.getenv("LOCALAPPDATA");
+        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (!windows || appData == null || appData.isBlank()) {
+            return stara;
+        }
+        Path nowa = Path.of(appData, "WladcaLochow", "zapis.dat");
+        try {
+            if (!Files.exists(nowa) && Files.isRegularFile(stara)) {
+                Files.createDirectories(nowa.getParent());
+                Files.copy(stara, nowa);
+            }
+        } catch (IOException e) {
+            // stary zapis zostaje na miejscu; gra zacznie w nowym folderze od zera
+        }
+        return nowa;
     }
 
     public static void zapisz(Gra gra, Path plik) throws IOException {

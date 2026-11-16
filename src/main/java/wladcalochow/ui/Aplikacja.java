@@ -1,11 +1,15 @@
 package wladcalochow.ui;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import wladcalochow.Aktualizacje;
+import wladcalochow.Uruchamiacz;
+import wladcalochow.Wersja;
 import wladcalochow.model.BilansDnia;
 import wladcalochow.model.Bohater;
 import wladcalochow.model.DzienGry;
@@ -76,9 +80,43 @@ public final class Aplikacja {
     private int przewiniecie;
     private String komunikat;
     private boolean radaWalkiPokazana;
+    private volatile String nowaWersja;
 
-    public Aplikacja(Path plikZapisu, Long ziarnoStartowe) throws IOException {
+    public Aplikacja(Path plikZapisu, Long ziarnoStartowe, boolean sprawdzajAktualizacje) throws IOException {
         this(new TerminalGry(), plikZapisu, ziarnoStartowe);
+        if (sprawdzajAktualizacje) {
+            Aktualizacje.sprawdzWTle(Wersja.numer())
+                    .thenAccept(wynik -> wynik.ifPresent(wersja -> nowaWersja = wersja));
+        }
+    }
+
+    /**
+     * Rozgrywa kilka dni na terminalu bez ekranu i sprawdza zapis gry. Rzuca wyjątek, gdy coś nie działa.
+     * Używane przez opcję --sprawdz, którą wywołuje instalator.
+     */
+    public static void autotest() throws IOException {
+        Path zapis = Files.createTempFile("wladca-lochow-autotest", ".dat");
+        try {
+            Files.delete(zapis);
+            Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(MIN_SZER + 16, MIN_WYS + 8), zapis, 1L);
+            aplikacja.rysuj();
+            Gra stan = Gra.nowa(1L);
+            stan.rozpocznij(stan.getStartowiFinansow().get(0), stan.getStartowiPracy().get(0));
+            aplikacja.pokazGre(stan);
+            aplikacja.rysuj();
+            for (int krok = 0; krok < 5000 && stan.getNumerDnia() < 6 && !stan.czyKoniecGry(); krok++) {
+                aplikacja.obsluz(new Wejscie.Klawisz(Wejscie.Rodzaj.ENTER));
+                aplikacja.rysuj();
+            }
+            if (stan.getNumerDnia() < 6 && !stan.czyKoniecGry()) {
+                throw new IllegalStateException("Rozgrywka nie posuwa się naprzód");
+            }
+            if (!stan.czyKoniecGry() && ZapisGry.wczytaj(zapis).isEmpty()) {
+                throw new IllegalStateException("Zapis gry nie daje się odczytać");
+            }
+        } finally {
+            Files.deleteIfExists(zapis);
+        }
     }
 
     Aplikacja(Konsola terminal, Path plikZapisu, Long ziarnoStartowe) {
@@ -127,6 +165,11 @@ public final class Aplikacja {
 
     Gra gra() {
         return gra;
+    }
+
+    /** Udaje, że sprawdzanie aktualizacji znalazło nową wersję. */
+    void ustawNowaWersje(String wersja) {
+        nowaWersja = wersja;
     }
 
     Ekran klatka() {
@@ -241,6 +284,13 @@ public final class Aplikacja {
         }
         String podtytul = "Zatrudniaj potwory, kop złoto i broń skarbca przed bohaterami.";
         e.pisz((e.szer - Ekran.szerokosc(podtytul)) / 2, ty + 6, podtytul, Paleta.TEKST_SLABY);
+        String wersja = "wersja " + Wersja.numer() + " ";
+        e.pisz(e.szer - Ekran.szerokosc(wersja), 0, wersja, Paleta.TEKST_SLABY);
+        String dostepna = nowaWersja;
+        if (dostepna != null) {
+            String wiesc = "Jest nowa wersja " + dostepna + ". Naciśnij A, żeby zaktualizować.";
+            e.pisz((e.szer - Ekran.szerokosc(wiesc)) / 2, ty + 7, wiesc, Paleta.ZIELEN, Ekran.BEZ_ZMIAN, true);
+        }
 
         int sw = Math.min(e.szer - 4, 120);
         Scena.rysuj(e, (e.szer - sw) / 2, ty + 8, sw, Scena.Pora.NOC, List.of(), List.of(), null, null);
@@ -248,6 +298,9 @@ public final class Aplikacja {
         boolean jestZapis = ZapisGry.istnieje(plikZapisu);
         List<Guzik> guziki = new ArrayList<>();
         guziki.add(new Guzik('k', "Kontynuuj", false, jestZapis, this::kontynuuj));
+        if (dostepna != null) {
+            guziki.add(new Guzik('a', "Aktualizuj", false, true, this::aktualizuj, true));
+        }
         guziki.add(new Guzik('o', "O grze", false, true, this::dialogOGrze));
         guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
         guziki.add(new Guzik('q', "Wyjście", false, true, this::wyjdzZGry));
@@ -632,6 +685,25 @@ public final class Aplikacja {
     }
 
     // ================= przebieg gry =================
+
+    /**
+     * Aktualizacja: na Windows otwiera instalator w nowym oknie i zamyka grę, żeby dało się podmienić plik.
+     * Na innych systemach pokazuje, skąd pobrać nową wersję.
+     */
+    private void aktualizuj() {
+        // Instalator startuje tylko z prawdziwej gry, nigdy z testów na sztucznym terminalu.
+        if (terminal instanceof TerminalGry && Uruchamiacz.uruchomAktualizacje()) {
+            wyjdzZGry();
+            return;
+        }
+        dialog = new Dialog("Nowa wersja " + nowaWersja,
+                List.of("Pobierz nowy plik wladca-lochow.jar ze strony wydań i zastąp nim obecny:",
+                        Aktualizacje.STRONA_WYDAN,
+                        "Na Windows wystarczy wkleić do PowerShella:",
+                        Aktualizacje.POLECENIE_INSTALATORA),
+                List.of(new Dialog.Opcja("Zamknij", "Wróć do menu.", true, this::zamknijDialog)),
+                this::zamknijDialog);
+    }
 
     /** Krótkie przedstawienie gry dla kogoś, kto widzi ją pierwszy raz. Kończy się propozycją nowej gry. */
     private void dialogOGrze() {

@@ -55,6 +55,8 @@
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>wladcalochow.Main</mainClass>
                   <manifestEntries>
+                    <Implementation-Title>Wladca Lochow</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
                     <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>

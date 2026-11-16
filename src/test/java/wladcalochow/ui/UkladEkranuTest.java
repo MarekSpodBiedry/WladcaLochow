@@ -69,7 +69,7 @@ class UkladEkranuTest {
     private static final List<String> WYMAGANE_EKRANY = List.of("Nowa gra", "Odwrócona bajka", "Dlaczego warto", "Kim jesteś", "Wybierz Ministra Pracy",
             "Doradca · dzień 2", "Doradca · pierwsza walka", "Podsumowanie dnia", "Ulepszenia lochu",
             "Postawa wobec ataku", "Budżet rekrutacji", "Potwory w lochu", "Zmiana ministra", "Bohaterowie",
-            "Loch upadł", "od jutra:", "Z kopalni jutro rano");
+            "Loch upadł", "od jutra:", "Z kopalni jutro rano", "Jest nowa wersja 12.34.56", "Nowa wersja 12.34.56");
 
     private final Set<String> widziane = new HashSet<>();
 
@@ -136,6 +136,9 @@ class UkladEkranuTest {
             Random bot = new Random(numer * 977L + szer);
             Path zapis = katalog.resolve("zapis-" + numer + ".dat");
             Aplikacja aplikacja = new Aplikacja(new SztucznaKonsola(szer, wys), zapis, (long) numer);
+            if (numer % 2 == 0) {
+                aplikacja.ustawNowaWersje("12.34.56");
+            }
             aplikacja.rysuj();
             sprawdz(aplikacja, szer, wys, "start");
             for (int krok = 0; krok < kroki; krok++) {
