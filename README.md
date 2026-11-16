@@ -4,6 +4,8 @@ Terminalowa gra strategiczna w Javie. Jesteś Władcą Podziemnych Lochów: zatr
 kopiesz złoto i bronisz skarbca przed bohaterami. Nie sterujesz potworami w walce, tylko decydujesz,
 kto rządzi lochem i jaką prowadzi politykę.
 
+![Poranek w lochu](docs/podglad-poranek.png)
+
 ![Walka pod bramą lochu](docs/podglad-walka.png)
 
 Obrazki to podgląd wyrenderowany poza terminalem; dokładny wygląd zależy od czcionki terminala.
@@ -37,6 +39,24 @@ Opcje:
 - **Klawiatura:** litery i Enter widoczne na przyciskach u dołu ekranu; w oknach wyboru strzałki,
   Enter, cyfry 1-9 i Esc. Strzałki góra/dół przewijają dziennik.
 - **Myszka:** kliknięcie w przycisk albo w opcję okna. Sam ruch myszki niczego nie robi.
+
+## Pierwsza gra
+
+Przy nowej grze wybierz „Z samouczkiem”. Najpierw zobaczysz cztery krótkie strony wprowadzenia,
+a potem przez pierwsze 5 dni prowadzi Cię doradca:
+
+| Dzień | Co się pojawia |
+|---|---|
+| 1 | żadnych decyzji: oglądasz, jak wygląda dzień |
+| 2 | Ulepszenia, 1 rozkaz dziennie |
+| 3 | Postawa i pierwszy, łatwy atak (jeden słaby rycerz) |
+| 4 | Potwory (premie, zwolnienia) i Budżet |
+| 5 | Ministrowie, od teraz 2 rozkazy dziennie |
+
+Na ekranie zawsze widać, w której fazie dnia jesteś (pasek nad sceną), co możesz teraz zrobić
+(podpowiedź nad dziennikiem) i co oznaczają symbole (dolna krawędź listy potworów). Każdy dzień
+kończy się podsumowaniem: ile złota przyszło, na co poszło i co zmieniło się w załodze.
+Klawisz H otwiera pomoc w dowolnej chwili.
 
 ## Zasady w skrócie
 
