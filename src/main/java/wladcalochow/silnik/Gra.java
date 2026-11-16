@@ -165,7 +165,7 @@ public class Gra implements Serializable {
         }
         int koszt = koszt(rozkaz);
         loch.getSkarbiec().wyplac(koszt);
-        dzien.zuzyjRozkaz();
+        dzien.zuzyjRozkaz(koszt);
         String skutek = switch (rozkaz) {
             case Rozkaz.ZmianaMinistraFinansow r -> {
                 nastepnyMinisterFinansow = r.nowy();

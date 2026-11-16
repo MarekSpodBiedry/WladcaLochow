@@ -28,7 +28,9 @@ public class DzienGry implements Serializable {
     private final List<MinisterFinansow> kandydaciFinansow;
     private final List<MinisterPracy> kandydaciPracy;
     private final RaportZwiadu raport;
+    private final BilansDnia bilans;
 
+    private int zlotoPrzedWalka;
     private int limitRozkazow = ROZKAZY_NA_DZIEN;
     private int pozostaleRozkazy = ROZKAZY_NA_DZIEN;
     private Faza faza = Faza.PORANEK;
@@ -36,7 +38,7 @@ public class DzienGry implements Serializable {
 
     public DzienGry(int numer, int dochodBazowy, List<Potwor> kandydaci, List<Bohater> bohaterowie,
                     List<MinisterFinansow> kandydaciFinansow, List<MinisterPracy> kandydaciPracy,
-                    RaportZwiadu raport) {
+                    RaportZwiadu raport, int zlotoRano) {
         this.numer = numer;
         this.dochodBazowy = Math.max(0, dochodBazowy);
         this.kandydaci = new ArrayList<>(kandydaci);
@@ -44,6 +46,7 @@ public class DzienGry implements Serializable {
         this.kandydaciFinansow = new ArrayList<>(kandydaciFinansow);
         this.kandydaciPracy = new ArrayList<>(kandydaciPracy);
         this.raport = raport;
+        this.bilans = new BilansDnia(zlotoRano);
     }
 
     // ---- faza 1 i 2: przypływ złota, pensje ministrów, rekrutacja, przydział do kopalni ----
@@ -55,6 +58,7 @@ public class DzienGry implements Serializable {
 
         int wydobycie = loch.odbierzWydobycie();
         skarbiec.wplac(dochodBazowy + wydobycie);
+        bilans.przychod(dochodBazowy, wydobycie);
         zdarzenia.add(new Informacja("Przypływ złota: +" + (dochodBazowy + wydobycie)
                 + " (dochód " + dochodBazowy + ", kopalnia " + wydobycie + ").", Ton.ZLOTO));
 
@@ -74,13 +78,17 @@ public class DzienGry implements Serializable {
     private void wyplacPensje(Loch loch, List<Zdarzenie> zdarzenia) {
         Skarbiec skarbiec = loch.getSkarbiec();
         MinisterFinansow finansow = loch.getMinisterFinansow();
-        if (!skarbiec.wyplac(finansow.getPensja())) {
+        if (skarbiec.wyplac(finansow.getPensja())) {
+            bilans.pensja(finansow.getPensja());
+        } else {
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
             zdarzenia.add(new Informacja(finansow.getImie() + " nie dostał pensji i odchodzi. "
                     + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
         }
         MinisterPracy pracy = loch.getMinisterPracy();
-        if (!skarbiec.wyplac(pracy.getPensja())) {
+        if (skarbiec.wyplac(pracy.getPensja())) {
+            bilans.pensja(pracy.getPensja());
+        } else {
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
             zdarzenia.add(new Informacja(pracy.getImie() + " nie dostał pensji i odchodzi. "
                     + "Kadry przejmuje darmowa stażystka.", Ton.ZLY));
@@ -116,6 +124,7 @@ public class DzienGry implements Serializable {
         }
         skarbiec.wplac(budzet - koszt);
         wybrani.forEach(loch::zatrudnij);
+        bilans.rekrutacja(koszt, wybrani);
 
         String kto = wybrani.isEmpty() ? "nikogo" : imiona(wybrani) + " (koszt " + koszt + ")";
         zdarzenia.add(new Informacja("Rekrutacja: budżet " + budzet + " złota, "
@@ -130,6 +139,7 @@ public class DzienGry implements Serializable {
         faza = Faza.WIECZOR;
         if (bohaterowie.isEmpty()) {
             zdarzenia.add(new Informacja("Spokojny dzień: żaden bohater nie zaatakował lochu.", Ton.DOBRY));
+            bilans.obrona(BilansDnia.Obrona.SPOKOJ);
             return null;
         }
         zdarzenia.add(new Informacja("Atak! Pod bramą stają: " + imionaZRodzajem(bohaterowie) + ".", Ton.NAGLOWEK));
@@ -138,6 +148,8 @@ public class DzienGry implements Serializable {
         if (loch.getPostawa() == Postawa.PRZEKUPSTWO) {
             int cena = kosztPrzekupstwa(loch);
             if (skarbiec.wyplac(cena)) {
+                bilans.lapowka(cena);
+                bilans.obrona(BilansDnia.Obrona.PRZEKUPSTWO);
                 zdarzenia.add(new Informacja("Bohaterowie biorą " + cena + " złota łapówki i odchodzą bez walki.",
                         Ton.ZLOTO));
                 return null;
@@ -158,6 +170,8 @@ public class DzienGry implements Serializable {
         if (wojownicy.isEmpty()) {
             int lup = skarbiec.zabierz(skarbiec.getZloto());
             loch.zanotujWynikObrony(false);
+            bilans.pladrowanie(lup);
+            bilans.obrona(BilansDnia.Obrona.BEZ_OBRONCOW);
             zdarzenia.add(new Informacja("Nikt nie broni lochu! Bohaterowie wynoszą cały skarbiec: "
                     + lup + " złota.", Ton.ZLY));
             return null;
@@ -176,6 +190,7 @@ public class DzienGry implements Serializable {
                 zdarzenia.add(new Informacja("W odwodzie czekają: " + imiona(odwod) + ".", Ton.NEUTRALNY));
             }
         }
+        zlotoPrzedWalka = skarbiec.getZloto();
         walka = new Walka(bohaterowie, pierwszaLinia, odwod, skarbiec, loch.mnoznikKradziezy(), los);
         return walka;
     }
@@ -200,7 +215,10 @@ public class DzienGry implements Serializable {
             throw new IllegalStateException("Walka jeszcze trwa");
         }
         Skarbiec skarbiec = loch.getSkarbiec();
-        loch.zanotujWynikObrony(walka.getWynik() == Walka.Wynik.OBRONA_UDANA);
+        boolean udana = walka.getWynik() == Walka.Wynik.OBRONA_UDANA;
+        loch.zanotujWynikObrony(udana);
+        bilans.obrona(udana ? BilansDnia.Obrona.WYGRANA : BilansDnia.Obrona.PRZEGRANA);
+        bilans.kradziez(zlotoPrzedWalka - skarbiec.getZloto());
         if (walka.getWynik() == Walka.Wynik.OBRONA_PRZEGRANA) {
             int lup = 0;
             for (Bohater bohater : walka.getBohaterowie()) {
@@ -211,6 +229,7 @@ public class DzienGry implements Serializable {
                     lup += kwota;
                 }
             }
+            bilans.pladrowanie(lup);
             zdarzenia.add(new Informacja("Zwycięzcy plądrują skarbiec i wynoszą " + lup + " złota.", Ton.ZLY));
         }
 
@@ -219,7 +238,9 @@ public class DzienGry implements Serializable {
             if (!potwor.czyZyje()) {
                 polegli.add(potwor);
                 loch.usun(potwor);
+                bilans.polegl(potwor);
             } else if (potwor.podsumujWalke()) {
+                bilans.awans(potwor);
                 zdarzenia.add(new Informacja(potwor.getImie() + " awansuje na poziom " + potwor.getPoziom()
                         + " (żołd " + potwor.getZold() + ").", Ton.DOBRY));
             }
@@ -237,9 +258,10 @@ public class DzienGry implements Serializable {
         List<Zdarzenie> zdarzenia = new ArrayList<>();
 
         List<Potwor> gornicy = loch.gornicy();
+        int wydobycie = 0;
         if (!gornicy.isEmpty()) {
             double suma = gornicy.stream().mapToDouble(Potwor::wartoscWydobycia).sum();
-            int wydobycie = (int) Math.round(suma * loch.mnoznikWydobycia());
+            wydobycie = (int) Math.round(suma * loch.mnoznikWydobycia());
             loch.dodajWydobycie(wydobycie);
             zdarzenia.add(new Informacja("Kopalnia: górników " + gornicy.size() + ", wykopali " + wydobycie
                     + " złota (wpłynie jutro rano).", Ton.ZLOTO));
@@ -260,6 +282,9 @@ public class DzienGry implements Serializable {
             zdarzenia.add(new Informacja("Bez żołdu i z fatalnym morale odchodzą z lochu: "
                     + imiona(wynik.odeszli()) + ".", Ton.ZLY));
         }
+
+        bilans.wieczor(wynik.wyplacono(), wynik.nieoplaceni(), wynik.odeszli(), wydobycie,
+                loch.getSkarbiec().getZloto());
 
         for (Potwor potwor : loch.getListaPotworow()) {
             potwor.wylecz();
@@ -288,11 +313,17 @@ public class DzienGry implements Serializable {
         return pozostaleRozkazy > 0 && faza == Faza.PORANEK;
     }
 
-    public void zuzyjRozkaz() {
+    /** Zużywa jeden rozkaz i zapisuje jego koszt w bilansie dnia. */
+    public void zuzyjRozkaz(int koszt) {
         if (!maRozkazy()) {
             throw new IllegalStateException("Brak rozkazów na dziś");
         }
         pozostaleRozkazy--;
+        bilans.rozkaz(koszt);
+    }
+
+    public BilansDnia getBilans() {
+        return bilans;
     }
 
     private void wymagaj(Faza oczekiwana) {

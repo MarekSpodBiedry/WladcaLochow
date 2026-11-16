@@ -58,7 +58,8 @@ public final class GeneratorZdarzen {
         ministrowie.add(loch.getMinisterFinansow().getImie());
         ministrowie.add(loch.getMinisterPracy().getImie());
         return new DzienGry(numer, dochod, kandydaci, bohaterowie,
-                kandydaciFinansow(los, 2, ministrowie), kandydaciPracy(los, 2, ministrowie), raport);
+                kandydaciFinansow(los, 2, ministrowie), kandydaciPracy(los, 2, ministrowie), raport,
+                loch.getSkarbiec().getZloto());
     }
 
     /** Im późniejszy dzień i pełniejszy skarbiec, tym liczniejsi i silniejsi bohaterowie. */

@@ -79,6 +79,10 @@ class SymulacjaTest {
             assertTrue(!potwor.czyWKopalni());
         }
         assertEquals(loch.getListaPotworow().size(), loch.getListaPotworow().stream().distinct().count());
+        var bilans = gra.getDzien().getBilans();
+        assertEquals(loch.getSkarbiec().getZloto(), bilans.getZlotoWieczorem());
+        assertEquals(bilans.getZlotoRano() + bilans.przychody() - bilans.wydatki(), bilans.getZlotoWieczorem(),
+                "bilans dnia " + gra.getNumerDnia() + " musi się zgadzać ze skarbcem");
     }
 
     @Test

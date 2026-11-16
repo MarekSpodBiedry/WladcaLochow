@@ -38,8 +38,41 @@ class DzienGryTest {
     }
 
     private static DzienGry dzien(int dochod, List<Potwor> kandydaci, List<Bohater> bohaterowie) {
+        return dzien(dochod, kandydaci, bohaterowie, 0);
+    }
+
+    private static DzienGry dzien(int dochod, List<Potwor> kandydaci, List<Bohater> bohaterowie, int zlotoRano) {
         return new DzienGry(1, dochod, kandydaci, bohaterowie, List.of(), List.of(),
-                new RaportZwiadu(0, 0, null, 0));
+                new RaportZwiadu(0, 0, null, 0), zlotoRano);
+    }
+
+    @Test
+    void bilansDniaZgadzaSieZeSkarbcem() {
+        Loch loch = loch(500);
+        loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Finanse", 12, 0));
+        loch.setMinisterPracy(new BylejakiMinisterPracy("Kadry", 8, 0, 0));
+        loch.zatrudnij(new Ork("A", 14, 60, 70, 20));
+        loch.zatrudnij(new Ork("B", 14, 60, 70, 25));
+        loch.zatrudnij(new Goblin("C", 7, 20, 40, 9));
+        loch.dodajWydobycie(33);
+        DzienGry dzien = dzien(40, List.of(new Goblin("Nowy", 7, 20, 40, 11)), List.of(), 500);
+        dzien.zuzyjRozkaz(0);
+        dzien.rozegrajPoranek(loch, new Random(4));
+        dzien.przygotujObrone(loch, new Random(4), new ArrayList<>());
+        dzien.rozegrajWieczor(loch, new Random(4));
+
+        var bilans = dzien.getBilans();
+        assertEquals(500, bilans.getZlotoRano());
+        assertEquals(40, bilans.getDochod());
+        assertEquals(33, bilans.getKopalnia());
+        assertEquals(20, bilans.getPensje());
+        assertEquals(11, bilans.getRekrutacja());
+        assertEquals(List.of("Nowy"), bilans.getZatrudnieni());
+        assertEquals(wladcalochow.model.BilansDnia.Obrona.SPOKOJ, bilans.getObrona());
+        assertEquals(loch.getSkarbiec().getZloto(), bilans.getZlotoWieczorem());
+        assertEquals(bilans.getZlotoRano() + bilans.przychody() - bilans.wydatki(), bilans.getZlotoWieczorem(),
+                "złoto rano + przychody - wydatki = złoto wieczorem");
+        assertEquals(loch.getWydobycieDoOdebrania(), bilans.getWydobycieNaJutro());
     }
 
     private static void rozegrajWalke(Walka walka) {
