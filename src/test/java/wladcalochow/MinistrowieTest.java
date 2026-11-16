@@ -33,10 +33,10 @@ class MinistrowieTest {
     }
 
     @Test
-    void zachowawczyTrzymaRezerweNaTrzyDni() {
+    void zachowawczyTrzymaRezerweNaDwaDni() {
         MinisterFinansow minister = new ZachowawczyMinisterFinansow("Z", 10, 0);
-        assertEquals(140, minister.kwotaNaRekrutacje(500, 120));
-        assertEquals(0, minister.kwotaNaRekrutacje(300, 120));
+        assertEquals(260, minister.kwotaNaRekrutacje(500, 120));
+        assertEquals(0, minister.kwotaNaRekrutacje(240, 120));
     }
 
     @Test

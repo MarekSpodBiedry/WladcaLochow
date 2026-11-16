@@ -1,9 +1,12 @@
 package wladcalochow.model;
 
-/** Trzyma rezerwę na trzy dni żołdu i dopiero nadwyżkę oddaje na rekrutację. */
+/**
+ * Trzyma rezerwę na dwa dni żołdu i dopiero nadwyżkę oddaje na rekrutację. Przy rezerwie na trzy dni
+ * (jak w pierwotnym opisie gry) loch prawie nigdy jej nie uzbierał, więc minister nikogo nie zatrudniał.
+ */
 public class ZachowawczyMinisterFinansow extends MinisterFinansow {
 
-    public static final int DNI_REZERWY = 3;
+    public static final int DNI_REZERWY = 2;
 
     public ZachowawczyMinisterFinansow(String imie, int pensja, double negocjacje) {
         super(imie, pensja, negocjacje);
