@@ -203,7 +203,7 @@ skrypt zapisany samymi znakami ASCII; po każdej zmianie źródła trzeba go od�
 python3 narzedzia/zbuduj-instalator.py
 ```
 
-Ikona gry (`zasoby/ikona.ico`) to złote „WŁ” z bloków, rysowane skryptem. Workflow dołącza ją
+Ikona gry (`zasoby/ikona.ico`) to złote „WL” z bloków (inicjały gry), rysowane skryptem. Workflow dołącza ją
 do wydania, a instalator ustawia na skrótach. Po zmianie wyglądu trzeba ją odświeżyć (wymaga Pillow):
 
 ```bash

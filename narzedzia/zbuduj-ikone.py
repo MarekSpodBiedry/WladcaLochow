@@ -2,7 +2,7 @@
 """Rysuje ikone gry: zasoby/ikona.ico (do skrotow) i zasoby/ikona.png (podglad).
 
 Ikona to siatka 16x16 blokow, tak jak grafika w grze: na tle w kolorze tla gry
-stoja same litery WL (W i L z kreska) z blokow, w zlotym gradiencie z tytulu gry.
+stoja same litery WL (inicjaly: Wladca Lochow) z blokow, w zlotym gradiencie z tytulu gry.
 
 Wymaga biblioteki Pillow:  pip install pillow
 Uzycie:                    python3 narzedzia/zbuduj-ikone.py
@@ -20,9 +20,9 @@ TLO = 0x14161F
 ZLOTO_GORA = 0xF7D36B
 ZLOTO_DOL = 0xEC8B45
 
-# Ksztalty liter jak w tytule gry (Aplikacja.LITERY_TYTULU).
+# Ksztalty liter jak w tytule gry (Aplikacja.LITERY_TYTULU): W z "Wladca" i L z "Lochow".
 LITERA_W = ["#   #", "#   #", "# # #", "## ##", "#   #"]
-LITERA_L = ["#    ", "# #  ", "##   ", "#    ", "#####"]
+LITERA_L = ["#    ", "#    ", "#    ", "#    ", "#####"]
 
 
 def rgb(kolor):
