@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import wladcalochow.model.BilansDnia;
 import wladcalochow.model.Bohater;
 import wladcalochow.model.DzienGry;
 import wladcalochow.model.Istota;
@@ -16,6 +17,7 @@ import wladcalochow.model.Potwor;
 import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
 import wladcalochow.model.strategia.Postawa;
+import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
 import wladcalochow.silnik.Gra;
@@ -39,7 +41,11 @@ public final class Aplikacja {
         }
     }
 
-    private record Guzik(char klawisz, String etykieta, boolean glowny, boolean aktywny, Runnable akcja) {
+    private record Guzik(char klawisz, String etykieta, boolean glowny, boolean aktywny, Runnable akcja,
+                         boolean nowy) {
+        Guzik(char klawisz, String etykieta, boolean glowny, boolean aktywny, Runnable akcja) {
+            this(klawisz, etykieta, glowny, aktywny, akcja, false);
+        }
     }
 
     private static final String[] LITERY_TYTULU = {
@@ -69,6 +75,7 @@ public final class Aplikacja {
     private Istota cel;
     private int przewiniecie;
     private String komunikat;
+    private boolean radaWalkiPokazana;
 
     public Aplikacja(Path plikZapisu, Long ziarnoStartowe) throws IOException {
         this.terminal = new TerminalGry();
@@ -226,7 +233,7 @@ public final class Aplikacja {
             default -> Scena.Pora.WIECZOR;
         };
         Scena.rysuj(e, 0, 1, sw, pora, lewa, prawa, aktor, cel);
-        etykietaSceny(e, pokazWalke ? walka : null);
+        osCzasu(e);
 
         panelBoczny(e, sw, 1, PANEL_SZER, dol - 1, pokazWalke ? walka : null);
         dziennik(e, 0, 1 + Scena.WYS, sw, dol - 1 - Scena.WYS);
@@ -252,8 +259,11 @@ public final class Aplikacja {
         x = e.pisz(x, 0, "  │  ", Paleta.RAMKA);
         x = e.pisz(x, 0, "Rozkazy ", Paleta.TEKST_SLABY);
         int rozkazy = tryb == Tryb.PORANEK ? dzien.getPozostaleRozkazy() : 0;
-        for (int i = 0; i < DzienGry.ROZKAZY_NA_DZIEN; i++) {
+        for (int i = 0; i < dzien.getLimitRozkazow(); i++) {
             x = e.pisz(x, 0, i < rozkazy ? "◆" : "◇", i < rozkazy ? Paleta.TURKUS : Paleta.TEKST_SLABY);
+        }
+        if (dzien.getLimitRozkazow() == 0) {
+            x = e.pisz(x, 0, "brak", Paleta.TEKST_SLABY);
         }
         x = e.pisz(x, 0, "  │  ", Paleta.RAMKA);
         x = e.pisz(x, 0, "Postawa: ", Paleta.TEKST_SLABY);
@@ -266,23 +276,50 @@ public final class Aplikacja {
         }
     }
 
-    private void etykietaSceny(Ekran e, Walka walka) {
-        String tekst;
-        int kolor;
-        if (walka != null) {
-            tekst = walka.czyZakonczona()
-                    ? (walka.getWynik() == Walka.Wynik.OBRONA_UDANA ? " Loch obroniony " : " Obrona przełamana ")
-                    : " Walka · runda " + Math.max(1, walka.getNumerRundy()) + " ";
-            kolor = walka.getWynik() == Walka.Wynik.OBRONA_PRZEGRANA ? Paleta.CZERWIEN
-                    : walka.czyZakonczona() ? Paleta.ZIELEN : Paleta.POMARANCZ;
-        } else if (tryb == Tryb.PORANEK) {
-            tekst = " Poranek · czas na rozkazy ";
-            kolor = Paleta.ZLOTO;
-        } else {
-            tekst = " Wieczór · dzień zakończony ";
-            kolor = Paleta.FIOLET;
+    /** Pasek z czterema fazami dnia; bieżąca faza jest podświetlona. */
+    private void osCzasu(Ekran e) {
+        String[] fazy = {"1 Rozkazy", "2 Rekrutacja", "3 Obrona", "4 Żołd"};
+        int biezaca = switch (tryb) {
+            case PORANEK -> 0;
+            case WALKA -> 2;
+            default -> 3;
+        };
+        int x = 1;
+        for (int i = 0; i < fazy.length; i++) {
+            if (i == biezaca) {
+                x = e.pisz(x, 1, " " + fazy[i] + " ", Paleta.TEKST_CIEMNY, Paleta.ZLOTO, true);
+            } else if (i < biezaca) {
+                x = e.pisz(x, 1, " " + fazy[i] + " ", Paleta.TEKST, 0x2F6B4F, false);
+            } else {
+                x = e.pisz(x, 1, " " + fazy[i] + " ", Paleta.TEKST_SLABY, Paleta.PANEL_JASNY, false);
+            }
+            if (i < fazy.length - 1) {
+                x = e.pisz(x, 1, "›", Paleta.TEKST_SLABY, Paleta.PANEL, false);
+            }
         }
-        e.pisz(1, 1, tekst, Paleta.TEKST_CIEMNY, kolor, true);
+    }
+
+    /** Krótka podpowiedź, co gracz może teraz zrobić. */
+    private String coTeraz() {
+        Walka walka = gra.getDzien().getWalka();
+        return switch (tryb) {
+            case PORANEK -> {
+                int rozkazy = gra.getDzien().getPozostaleRozkazy();
+                yield rozkazy > 0
+                        ? "Wydaj rozkaz (zostało " + rozkazy + ") albo Enter: start dnia"
+                        : "Enter rozpoczyna dzień";
+            }
+            case WALKA -> {
+                if (walka == null || !walka.czyZakonczona()) {
+                    int runda = walka == null ? 1 : Math.max(1, walka.getNumerRundy());
+                    yield "Runda " + runda + " · Enter: ruch · A: auto · F: do końca";
+                }
+                yield (walka.getWynik() == Walka.Wynik.OBRONA_UDANA ? "Loch obroniony" : "Obrona przełamana")
+                        + " · Enter: zakończ dzień";
+            }
+            case WIECZOR -> "Dzień zakończony · Enter: następny dzień";
+            default -> "";
+        };
     }
 
     // ---- panel boczny ----
@@ -299,6 +336,8 @@ public final class Aplikacja {
             e.ramka(x, y + wysBohaterow, w, h - wysBohaterow, Paleta.RAMKA, Paleta.PANEL,
                     "Obrońcy · w kopalni: " + loch.gornicy().size(), Paleta.ZIELEN);
             listaIstot(e, x + 1, y + wysBohaterow + 1, w - 2, h - wysBohaterow - 2, obroncy, walka);
+            legenda(e, x, y + wysBohaterow - 1, w, "liczba: siła ataku");
+            legenda(e, x, y + h - 1, w, "★ poziom  ♥ życie  ☻ morale");
             return;
         }
 
@@ -343,6 +382,13 @@ public final class Aplikacja {
         e.ramka(x, y + 12, w, h - 12, Paleta.RAMKA, Paleta.PANEL,
                 "Potwory " + potwory.size() + "/" + Loch.POJEMNOSC, Paleta.ZIELEN);
         listaIstot(e, x + 1, y + 13, w - 2, h - 14, potwory, null);
+        legenda(e, x, y + h - 1, w, "★ poziom  ♥ życie  ☻ morale");
+    }
+
+    /** Objaśnienie symboli wpisane w dolną krawędź ramki. */
+    private static void legenda(Ekran e, int x, int y, int w, String tekst) {
+        String opis = " " + tekst + " ";
+        e.pisz(x + w - Ekran.szerokosc(opis) - 2, y, opis, Paleta.TEKST_SLABY);
     }
 
     private static String skrotUlepszenia(Ulepszenie ulepszenie) {
@@ -423,6 +469,8 @@ public final class Aplikacja {
 
     private void dziennik(Ekran e, int x, int y, int w, int h) {
         e.ramka(x, y, w, h, Paleta.RAMKA, Paleta.PANEL, "Dziennik", Paleta.POMARANCZ);
+        String podpowiedz = " " + Ekran.przytnij(coTeraz(), w - 17) + " ";
+        e.pisz(x + w - Ekran.szerokosc(podpowiedz) - 2, y, podpowiedz, Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
         int wiersze = h - 2;
         int szerTekstu = w - 4;
         List<Gra.WpisDziennika> wpisy = gra.getDziennik();
@@ -463,12 +511,11 @@ public final class Aplikacja {
         List<Guzik> guziki = new ArrayList<>();
         switch (tryb) {
             case PORANEK -> {
-                boolean rozkazy = gra.getDzien().maRozkazy();
-                guziki.add(new Guzik('m', "Ministrowie", false, rozkazy, this::dialogMinistrowie));
-                guziki.add(new Guzik('b', "Budżet", false, rozkazy, this::dialogBudzet));
-                guziki.add(new Guzik('p', "Postawa", false, rozkazy, this::dialogPostawa));
-                guziki.add(new Guzik('o', "Potwory", false, true, this::dialogPotwory));
-                guziki.add(new Guzik('u', "Ulepszenia", false, rozkazy, this::dialogUlepszenia));
+                guzikRozkazu(guziki, RodzajRozkazu.MINISTROWIE, 'm', this::dialogMinistrowie);
+                guzikRozkazu(guziki, RodzajRozkazu.BUDZET, 'b', this::dialogBudzet);
+                guzikRozkazu(guziki, RodzajRozkazu.POSTAWA, 'p', this::dialogPostawa);
+                guzikRozkazu(guziki, RodzajRozkazu.POTWORY, 'o', this::dialogPotwory);
+                guzikRozkazu(guziki, RodzajRozkazu.ULEPSZENIA, 'u', this::dialogUlepszenia);
                 guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
                 guziki.add(new Guzik('q', "Wyjdź", false, true, this::wyjdzDoMenu));
                 guziki.add(new Guzik('\n', "Rozpocznij dzień", true, true, this::rozegrajDzien));
@@ -485,6 +532,7 @@ public final class Aplikacja {
                 }
             }
             case WIECZOR -> {
+                guziki.add(new Guzik('s', "Podsumowanie", false, true, this::dialogPodsumowanie));
                 guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
                 guziki.add(new Guzik('q', "Wyjdź", false, true, this::wyjdzDoMenu));
                 guziki.add(new Guzik('\n', "Następny dzień", true, true, this::nastepnyDzien));
@@ -493,6 +541,15 @@ public final class Aplikacja {
             }
         }
         return guziki;
+    }
+
+    /** Przycisk grupy rozkazów pojawia się dopiero, gdy grupa jest odblokowana. */
+    private void guzikRozkazu(List<Guzik> guziki, RodzajRozkazu rodzaj, char klawisz, Runnable akcja) {
+        if (!gra.czyOdblokowany(rodzaj)) {
+            return;
+        }
+        boolean aktywny = gra.getDzien().maRozkazy() || rodzaj == RodzajRozkazu.POTWORY;
+        guziki.add(new Guzik(klawisz, rodzaj.nazwa(), false, aktywny, akcja, gra.czyNowy(rodzaj)));
     }
 
     /** Rysuje rząd przycisków na dole ekranu i rejestruje ich skróty oraz strefy kliknięć. */
@@ -504,7 +561,7 @@ public final class Aplikacja {
             int w = Ekran.szerokosc(klawisz) + 1 + Ekran.szerokosc(guzik.etykieta()) + 2;
             int gx = guzik.glowny() ? e.szer - w - 1 : x;
             int tlo = !guzik.aktywny() ? Paleta.GUZIK_WYLACZONY
-                    : guzik.glowny() ? Paleta.GUZIK_GLOWNY : Paleta.GUZIK;
+                    : guzik.glowny() ? Paleta.GUZIK_GLOWNY : guzik.nowy() ? Paleta.GUZIK_NOWY : Paleta.GUZIK;
             e.pisz(gx, y, "▄".repeat(w), tlo);
             e.wypelnij(gx, y + 1, w, 1, tlo);
             e.pisz(gx, y + 2, "▀".repeat(w), tlo);
@@ -532,38 +589,114 @@ public final class Aplikacja {
 
     private void nowaGra() {
         komunikat = null;
-        gra = Gra.nowa(ziarnoStartowe != null ? ziarnoStartowe : System.nanoTime());
+        dialog = new Dialog("Nowa gra",
+                List.of("Samouczek prowadzi przez pierwsze 5 dni: możliwości pojawiają się po jednej, "
+                        + "a doradca tłumaczy, co się dzieje."),
+                List.of(new Dialog.Opcja("Z samouczkiem", "Zalecane za pierwszym razem.", true,
+                                () -> zacznijNowaGre(true)),
+                        new Dialog.Opcja("Bez samouczka", "Wszystkie rozkazy dostępne od pierwszego dnia.", true,
+                                () -> zacznijNowaGre(false))),
+                this::zamknijDialog);
+    }
+
+    private void zacznijNowaGre(boolean samouczek) {
+        long ziarno = ziarnoStartowe != null ? ziarnoStartowe : System.nanoTime();
+        gra = samouczek ? Gra.nowaZSamouczkiem(ziarno) : Gra.nowa(ziarno);
+        if (samouczek) {
+            strona(0, "Wybierz ministrów", this::wybierzMinistraFinansow, this::porzucNowaGre);
+        } else {
+            wybierzMinistraFinansow();
+        }
+    }
+
+    /** Strona wprowadzenia lub pomocy z przyciskami Dalej i Wstecz. */
+    private void strona(int numer, String etykietaKonca, Runnable poZakonczeniu, Runnable anuluj) {
+        Doradca.Strona strona = Doradca.STRONY.get(numer);
+        boolean ostatnia = numer == Doradca.STRONY.size() - 1;
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        for (MinisterFinansow kandydat : gra.getStartowiFinansow()) {
-            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    "pensja " + kandydat.getPensja() + " · negocjacje -" + procent(kandydat.getNegocjacje())
-                            + "% · " + kandydat.opisStylu(),
-                    true, () -> wybierzMinistraPracy(kandydat)));
+        opcje.add(ostatnia
+                ? new Dialog.Opcja(etykietaKonca, "To już ostatnia strona.", true, poZakonczeniu)
+                : new Dialog.Opcja("Dalej", "Następna strona: " + Doradca.STRONY.get(numer + 1).tytul() + ".", true,
+                        () -> strona(numer + 1, etykietaKonca, poZakonczeniu, anuluj)));
+        if (numer > 0) {
+            opcje.add(new Dialog.Opcja("Wstecz", "Poprzednia strona.", true,
+                    () -> strona(numer - 1, etykietaKonca, poZakonczeniu, anuluj)));
+        }
+        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        for (String akapit : strona.akapity()) {
+            if (!wiersze.isEmpty()) {
+                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+            }
+            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
+        }
+        dialog = new Dialog(wiersze, strona.tytul() + " · " + (numer + 1) + "/" + Doradca.STRONY.size(),
+                opcje, anuluj);
+    }
+
+    /** W samouczku do wyboru jest dwóch kandydatów o przeciwnych stylach, poza nim trzech. */
+    private <T> List<T> kandydaciStartowi(List<T> wszyscy) {
+        return gra.czyTrwaSamouczek() && wszyscy.size() > 2 ? wszyscy.subList(0, 2) : wszyscy;
+    }
+
+    private void wybierzMinistraFinansow() {
+        List<Dialog.Opcja> opcje = new ArrayList<>();
+        for (MinisterFinansow kandydat : kandydaciStartowi(gra.getStartowiFinansow())) {
+            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
+                    + kandydat.getPensja() + " · zniżki " + procent(kandydat.getNegocjacje()) + "%",
+                    kandydat.opisStylu(), true, () -> wybierzMinistraPracy(kandydat)));
         }
         dialog = new Dialog("Wybierz Ministra Finansów",
-                List.of("Minister Finansów decyduje, ile złota idzie na rekrutację, i wypłaca żołd. "
-                        + "Negocjacje obniżają ceny ulepszeń, łapówek i zmian ministrów."),
+                List.of("Minister Finansów pilnuje złota: decyduje, ile wydać na nowe potwory, i wypłaca żołd. "
+                                + "Zniżki obniżają ceny ulepszeń, łapówek i zmian ministrów.",
+                        "Nie ma złego wyboru. Ministra można później wymienić."),
                 opcje, this::porzucNowaGre);
     }
 
     private void wybierzMinistraPracy(MinisterFinansow finansow) {
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        for (MinisterPracy kandydat : gra.getStartowiPracy()) {
-            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    "pensja " + kandydat.getPensja() + " · werbunek +" + kandydat.getWerbunek() + " · kopalnia +"
-                            + procent(kandydat.getNadzorKopalni()) + "% · " + kandydat.opisStylu(),
-                    true, () -> {
+        for (MinisterPracy kandydat : kandydaciStartowi(gra.getStartowiPracy())) {
+            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
+                    + kandydat.getPensja() + " · werbunek +" + kandydat.getWerbunek() + " · kopalnia +"
+                    + procent(kandydat.getNadzorKopalni()) + "%",
+                    kandydat.opisStylu(), true, () -> {
                         gra.rozpocznij(finansow, kandydat);
                         dialog = null;
                         tryb = Tryb.PORANEK;
                         przewiniecie = 0;
                         zapisz();
+                        radaPoranna();
                     }));
         }
         dialog = new Dialog("Wybierz Ministra Pracy",
-                List.of("Minister Pracy zatrudnia potwory i wysyła jedną trzecią załogi do kopalni. "
-                        + "Werbunek to dodatkowi kandydaci co dzień, a nadzór kopalni zwiększa wydobycie."),
+                List.of("Minister Pracy zatrudnia potwory i wysyła co trzeciego do kopalni. Werbunek to dodatkowi "
+                                + "kandydaci co dzień, a premia do kopalni zwiększa wydobycie złota.",
+                        "Tego ministra też można później wymienić."),
                 opcje, this::porzucNowaGre);
+    }
+
+    // ---- doradca ----
+
+    private void radaPoranna() {
+        if (!gra.czyTrwaSamouczek()) {
+            return;
+        }
+        pokazRade("Doradca · dzień " + gra.getNumerDnia(), Doradca.poranek(gra.getNumerDnia()));
+    }
+
+    private void pokazRade(String tytul, List<String> akapity) {
+        if (akapity.isEmpty()) {
+            return;
+        }
+        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        for (String akapit : akapity) {
+            if (!wiersze.isEmpty()) {
+                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+            }
+            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
+        }
+        dialog = new Dialog(wiersze, tytul,
+                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog)),
+                this::zamknijDialog);
     }
 
     private void porzucNowaGre() {
@@ -584,6 +717,7 @@ public final class Aplikacja {
         aktor = null;
         cel = null;
         przewiniecie = 0;
+        radaPoranna();
     }
 
     private void zapisz() {
@@ -623,6 +757,10 @@ public final class Aplikacja {
         auto = false;
         aktor = null;
         cel = null;
+        if (gra.czyTrwaSamouczek() && !radaWalkiPokazana) {
+            radaWalkiPokazana = true;
+            pokazRade("Doradca · pierwsza walka", Doradca.walka());
+        }
     }
 
     private void krokWalki() {
@@ -688,6 +826,81 @@ public final class Aplikacja {
                     null);
         } else {
             tryb = Tryb.WIECZOR;
+            dialogPodsumowanie();
+        }
+    }
+
+    /** Wieczorne podsumowanie: bilans złota, wynik obrony i zmiany w załodze. */
+    private void dialogPodsumowanie() {
+        BilansDnia bilans = gra.getDzien().getBilans();
+        Loch loch = gra.getLoch();
+        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        String rada = gra.czyTrwaSamouczek() ? Doradca.wieczor(gra.getNumerDnia()) : null;
+        if (rada != null) {
+            wiersze.add(new Dialog.Wiersz("Doradca: " + rada, Paleta.TEKST));
+            wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+        }
+        int zmiana = bilans.getZlotoWieczorem() - bilans.getZlotoRano();
+        wiersze.add(new Dialog.Wiersz("Skarbiec: " + bilans.getZlotoRano() + " → " + bilans.getZlotoWieczorem()
+                + " złota (" + (zmiana >= 0 ? "+" : "") + zmiana + ")", Paleta.ZLOTO));
+        wiersze.add(new Dialog.Wiersz("Przychody +" + bilans.przychody() + ": dochód " + bilans.getDochod()
+                + ", kopalnia " + bilans.getKopalnia(), Paleta.ZIELEN));
+        List<String> wydatki = new ArrayList<>();
+        pozycja(wydatki, "pensje ministrów", bilans.getPensje());
+        pozycja(wydatki, "rekrutacja", bilans.getRekrutacja());
+        pozycja(wydatki, "rozkazy", bilans.getRozkazy());
+        pozycja(wydatki, "łapówka", bilans.getLapowka());
+        pozycja(wydatki, "kradzieże", bilans.getSkradzione());
+        pozycja(wydatki, "plądrowanie", bilans.getSpladrowane());
+        pozycja(wydatki, "żołd", bilans.getZold());
+        wiersze.add(new Dialog.Wiersz("Wydatki -" + bilans.wydatki()
+                + (wydatki.isEmpty() ? "" : ": " + String.join(", ", wydatki)), Paleta.CZERWIEN));
+
+        String obrona = switch (bilans.getObrona()) {
+            case SPOKOJ -> "Obrona: spokojny dzień, nikt nie zaatakował.";
+            case PRZEKUPSTWO -> "Obrona: bohaterowie wzięli łapówkę i odeszli.";
+            case WYGRANA -> "Obrona: loch obroniony.";
+            case PRZEGRANA -> "Obrona: PRZEGRANA. Porażki z rzędu: " + loch.getPorazkiZRzedu() + " z "
+                    + Loch.PORAZKI_DO_UPADKU + ".";
+            case BEZ_OBRONCOW -> "Obrona: nikt nie bronił lochu. Porażki z rzędu: " + loch.getPorazkiZRzedu()
+                    + " z " + Loch.PORAZKI_DO_UPADKU + ".";
+            case NIEROZEGRANA -> "Obrona: nie doszło do niej.";
+        };
+        boolean porazka = bilans.getObrona() == BilansDnia.Obrona.PRZEGRANA
+                || bilans.getObrona() == BilansDnia.Obrona.BEZ_OBRONCOW;
+        wiersze.add(new Dialog.Wiersz(obrona, porazka ? Paleta.CZERWIEN : Paleta.TEKST));
+
+        List<String> zaloga = new ArrayList<>();
+        lista(zaloga, "zatrudnieni", bilans.getZatrudnieni());
+        lista(zaloga, "polegli", bilans.getPolegli());
+        lista(zaloga, "odeszli", bilans.getOdeszli());
+        lista(zaloga, "bez żołdu", bilans.getNieoplaceni());
+        lista(zaloga, "awans", bilans.getAwanse());
+        wiersze.add(new Dialog.Wiersz("Załoga: " + loch.getListaPotworow().size() + " z " + Loch.POJEMNOSC
+                + (zaloga.isEmpty() ? ", bez zmian." : ". " + String.join(". ", zaloga) + "."), Paleta.TEKST));
+        if (bilans.getWydobycieNaJutro() > 0) {
+            wiersze.add(new Dialog.Wiersz("Jutro rano z kopalni: +" + bilans.getWydobycieNaJutro() + " złota.",
+                    Paleta.TURKUS));
+        }
+        dialog = new Dialog(wiersze, "Podsumowanie dnia " + gra.getNumerDnia(),
+                List.of(new Dialog.Opcja("Następny dzień", "Zaczyna się kolejny poranek.", true, () -> {
+                            dialog = null;
+                            nastepnyDzien();
+                        }),
+                        new Dialog.Opcja("Obejrzyj loch", "Zamknij podsumowanie i zostań przy wieczornym widoku.",
+                                true, this::zamknijDialog)),
+                this::zamknijDialog);
+    }
+
+    private static void pozycja(List<String> pozycje, String nazwa, int kwota) {
+        if (kwota > 0) {
+            pozycje.add(nazwa + " " + kwota);
+        }
+    }
+
+    private static void lista(List<String> czesci, String nazwa, List<String> imiona) {
+        if (!imiona.isEmpty()) {
+            czesci.add(Character.toUpperCase(nazwa.charAt(0)) + nazwa.substring(1) + ": " + String.join(", ", imiona));
         }
     }
 
@@ -696,6 +909,7 @@ public final class Aplikacja {
         tryb = Tryb.PORANEK;
         przewiniecie = 0;
         zapisz();
+        radaPoranna();
     }
 
     // ================= okna rozkazów =================
@@ -802,18 +1016,26 @@ public final class Aplikacja {
                 opcje, this::dialogPotwory);
     }
 
+    /** Pomoc: w samouczku najpierw bieżąca rada doradcy, potem strony z zasadami. */
     private void dialogPomoc() {
-        dialog = new Dialog("Jak grać",
-                List.of("Jesteś Władcą Lochów. Każdego ranka wydajesz najwyżej 2 rozkazy, a potem dzień toczy się "
-                                + "sam: wpływa złoto, ministrowie zatrudniają potwory i wysyłają jedną trzecią "
-                                + "załogi do kopalni, reszta broni lochu, a wieczorem dostaje żołd.",
-                        "Bohaterów przyciąga bogactwo: im pełniejszy skarbiec i późniejszy dzień, tym silniejszy "
-                                + "atak. Trzy przegrane obrony z rzędu oznaczają upadek lochu.",
-                        "Potwór bez żołdu traci morale, a z morale poniżej 10% odchodzi. Kto przeżyje walkę, "
-                                + "zdobywa doświadczenie: rośnie w siłę, ale żąda wyższego żołdu.",
-                        "Sterowanie: litery i Enter z przycisków na dole albo kliknięcie myszką. "
-                                + "Strzałki przewijają dziennik."),
-                List.of(new Dialog.Opcja("Zamknij", "Wróć do gry.", true, this::zamknijDialog)),
+        boolean wGrze = gra != null && tryb != Tryb.MENU;
+        List<String> rada = wGrze && gra.czyTrwaSamouczek() && tryb == Tryb.PORANEK
+                ? Doradca.poranek(gra.getNumerDnia()) : List.of();
+        if (rada.isEmpty()) {
+            strona(0, "Zamknij", this::zamknijDialog, this::zamknijDialog);
+            return;
+        }
+        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        for (String akapit : rada) {
+            if (!wiersze.isEmpty()) {
+                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+            }
+            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
+        }
+        dialog = new Dialog(wiersze, "Doradca · dzień " + gra.getNumerDnia(),
+                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog),
+                        new Dialog.Opcja("Zasady gry", "Cztery krótkie strony o tym, jak działa loch.", true,
+                                () -> strona(0, "Zamknij", this::zamknijDialog, this::zamknijDialog))),
                 this::zamknijDialog);
     }
 }

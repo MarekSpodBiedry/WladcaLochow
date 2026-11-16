@@ -12,6 +12,10 @@ final class Dialog {
     record Opcja(String etykieta, String szczegol, boolean aktywna, Runnable akcja) {
     }
 
+    /** Akapit wstępu w wybranym kolorze. Pusty tekst daje odstęp. */
+    record Wiersz(String tekst, int kolor) {
+    }
+
     /** Odbiorca stref klikalnych wyznaczanych podczas rysowania. */
     interface Strefy {
         void dodaj(int x, int y, int w, int h, Runnable akcja);
@@ -20,7 +24,7 @@ final class Dialog {
     private static final int MAKS_SZER = 78;
 
     private final String tytul;
-    private final List<String> wstep;
+    private final List<Wiersz> wstep;
     private final List<Opcja> opcje;
     private final Runnable anuluj;
     private int wybrana;
@@ -28,6 +32,11 @@ final class Dialog {
     private int widoczne = 1;
 
     Dialog(String tytul, List<String> wstep, List<Opcja> opcje, Runnable anuluj) {
+        this(wstep.stream().map(tekst -> new Wiersz(tekst, Paleta.TEKST)).toList(), tytul, opcje, anuluj);
+    }
+
+    /** Wariant z kolorowymi akapitami (kolejność parametrów odróżnia go od wariantu z samym tekstem). */
+    Dialog(List<Wiersz> wstep, String tytul, List<Opcja> opcje, Runnable anuluj) {
         this.tytul = tytul;
         this.wstep = wstep;
         this.opcje = opcje;
@@ -43,9 +52,11 @@ final class Dialog {
     void rysuj(Ekran e, Strefy strefy) {
         int w = Math.min(MAKS_SZER, e.szer - 6);
         int wnetrze = w - 4;
-        List<String> wiersze = new ArrayList<>();
-        for (String akapit : wstep) {
-            wiersze.addAll(Ekran.zawin(akapit, wnetrze));
+        List<Wiersz> wiersze = new ArrayList<>();
+        for (Wiersz akapit : wstep) {
+            for (String linia : Ekran.zawin(akapit.tekst(), wnetrze)) {
+                wiersze.add(new Wiersz(linia, akapit.kolor()));
+            }
         }
         int stale = 2 + wiersze.size() + (wiersze.isEmpty() ? 0 : 1) + 2;
         widoczne = Math.max(1, Math.min(opcje.size(), (e.wys - 2 - stale) / 2));
@@ -60,8 +71,8 @@ final class Dialog {
 
         e.ramka(x, y, w, h, Paleta.ZLOTO, Paleta.PANEL, tytul, Paleta.ZLOTO);
         int wiersz = y + 1;
-        for (String linia : wiersze) {
-            e.pisz(x + 2, wiersz++, linia, Paleta.TEKST);
+        for (Wiersz linia : wiersze) {
+            e.pisz(x + 2, wiersz++, linia.tekst(), linia.kolor());
         }
         if (!wiersze.isEmpty()) {
             wiersz++;

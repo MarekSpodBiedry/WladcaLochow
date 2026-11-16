@@ -26,6 +26,7 @@ final class Paleta {
 
     static final int GUZIK = 0x2E3654;
     static final int GUZIK_GLOWNY = 0x2E8B62;
+    static final int GUZIK_NOWY = 0x8A5320;
     static final int GUZIK_WYLACZONY = 0x20243A;
 
     private Paleta() {
