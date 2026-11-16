@@ -1,24 +1,39 @@
 name: Wydanie
 
 # Buduje grę, uruchamia testy i publikuje plik wladca-lochow.jar jako wydanie na GitHubie.
-# Uruchamiane ręcznie (Actions -> Wydanie -> Run workflow) albo przez wypchnięcie tagu v*.
+#
+# Wydanie powstaje na trzy sposoby:
+#   1. zmiana numeru <version> w pom.xml na głównej gałęzi (numer wydania bierze się z pom.xml),
+#   2. ręcznie: Actions -> Wydanie -> Run workflow,
+#   3. wypchnięcie tagu v1.2.3.
+# Jeśli wydanie o danym numerze już istnieje, workflow nic nie robi.
 
 on:
   workflow_dispatch:
     inputs:
       wersja:
-        description: "Numer wersji bez litery v, np. 1.0.0"
-        required: true
-        default: "1.0.0"
+        description: "Numer wersji bez litery v, np. 1.0.1 (puste = numer z pom.xml)"
+        required: false
+        default: ""
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
+    paths:
+      - "pom.xml"
+      - ".github/workflows/wydanie.yml"
 
 permissions:
   contents: write
 
 jobs:
   wydanie:
+    # Zwykłe wypchnięcie publikuje tylko z głównej gałęzi repozytorium.
+    if: >-
+      github.ref_type == 'tag' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,26 +44,37 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Ustal wersję i tag
+      - name: Ustal wersję
         id: wersja
         env:
+          GH_TOKEN: ${{ github.token }}
           WERSJA_Z_FORMULARZA: ${{ inputs.wersja }}
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             tag="${GITHUB_REF_NAME}"
-          else
+          elif [ -n "${WERSJA_Z_FORMULARZA}" ]; then
             tag="v${WERSJA_Z_FORMULARZA}"
+          else
+            tag="v$(mvn -q -B help:evaluate -Dexpression=project.version -DforceStdout)"
           fi
           if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "Niepoprawna wersja: $tag (oczekiwany format: v1.2.3)" >&2
             exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Wydanie $tag już istnieje, nie ma nic do zrobienia."
+            echo "nowe=nie" >> "$GITHUB_OUTPUT"
+          else
+            echo "nowe=tak" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Zbuduj i przetestuj
+        if: steps.wersja.outputs.nowe == 'tak'
         run: mvn -B package
 
       - name: Opublikuj wydanie
+        if: steps.wersja.outputs.nowe == 'tak'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.wersja.outputs.tag }}
@@ -64,6 +90,7 @@ jobs:
           Okno terminala powinno mieć co najmniej 108 × 30 znaków.
           OPIS
           gh release create "$TAG" target/wladca-lochow.jar \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Władca Lochów ${TAG#v}" \
             --notes-file opis.md \
             --target "$GITHUB_SHA"
