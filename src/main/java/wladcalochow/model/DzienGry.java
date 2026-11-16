@@ -20,6 +20,8 @@ public class DzienGry implements Serializable {
     public enum Faza { PORANEK, OBRONA, WIECZOR, ZAKONCZONY }
 
     public static final int ROZKAZY_NA_DZIEN = 2;
+    /** Szansa, że pokonany w walce potwór przeżyje ciężko ranny zamiast zginąć. */
+    public static final double SZANSA_PRZEZYCIA = 0.35;
 
     private final int numer;
     private final int dochodBazowy;
@@ -245,8 +247,13 @@ public class DzienGry implements Serializable {
         }
 
         List<Potwor> polegli = new ArrayList<>();
+        List<Potwor> ranni = new ArrayList<>();
         for (Potwor potwor : walka.getObroncy()) {
-            if (!potwor.czyZyje()) {
+            if (!potwor.czyZyje() && los.nextDouble() < SZANSA_PRZEZYCIA) {
+                // Część pokonanych przeżywa: loch nie traci w jednej walce całej inwestycji.
+                potwor.przezyjRanna();
+                ranni.add(potwor);
+            } else if (!potwor.czyZyje()) {
                 polegli.add(potwor);
                 loch.usun(potwor);
                 bilans.polegl(potwor);
@@ -255,6 +262,9 @@ public class DzienGry implements Serializable {
                 zdarzenia.add(new Informacja(potwor.getImie() + " awansuje na poziom " + potwor.getPoziom()
                         + " (żołd " + potwor.getZold() + ").", Ton.DOBRY));
             }
+        }
+        if (!ranni.isEmpty()) {
+            zdarzenia.add(new Informacja("Przeżyli ciężko ranni: " + imiona(ranni) + ".", Ton.NEUTRALNY));
         }
         if (!polegli.isEmpty()) {
             zdarzenia.add(new Informacja("Polegli w obronie lochu: " + imiona(polegli) + ".", Ton.ZLY));

@@ -70,6 +70,32 @@ class BalansTest {
     }
 
     @Test
+    void czescPokonanychPotworowPrzezywaAleWiekszoscGinie() {
+        int ranni = 0;
+        int polegli = 0;
+        for (long ziarno = 1; ziarno <= 60; ziarno++) {
+            Gra gra = Gra.nowa(ziarno);
+            gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));
+            for (int dzien = 0; dzien < 30 && !gra.czyKoniecGry(); dzien++) {
+                gra.rozegrajPoranek();
+                if (gra.rozpocznijObrone() != null) {
+                    while (!gra.getDzien().getWalka().czyZakonczona()) {
+                        gra.krokWalki();
+                    }
+                }
+                gra.zakonczDzien();
+                polegli += gra.getDzien().getBilans().getPolegli().size();
+                if (!gra.czyKoniecGry()) {
+                    gra.rozpocznijDzien();
+                }
+            }
+            ranni += (int) gra.getDziennik().stream().filter(w -> w.tekst().startsWith("Przeżyli ciężko ranni")).count();
+        }
+        assertTrue(ranni > 0, "zdarzają się ocaleni");
+        assertTrue(polegli > ranni, "większość pokonanych ginie: polegli " + polegli + ", dni z rannymi " + ranni);
+    }
+
+    @Test
     void zerowyDochodJestRzadki() {
         Gra gra = Gra.nowa(3);
         gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));

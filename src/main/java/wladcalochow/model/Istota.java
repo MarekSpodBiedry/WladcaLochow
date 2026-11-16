@@ -107,6 +107,11 @@ public abstract class Istota implements Serializable {
         return lup;
     }
 
+    /** Pokonana istota przeżywa z jednym punktem życia (ciężko ranna, wieczorem zostanie wyleczona). */
+    public void przezyjRanna() {
+        punktyZycia = Math.max(1, punktyZycia);
+    }
+
     /** Oddaje całe noszone złoto (np. potwór po walce do skarbca). Zwraca oddaną kwotę. */
     public int oddajZloto() {
         int kwota = zloto;
