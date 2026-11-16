@@ -1,0 +1,285 @@
+package wladcalochow.silnik;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+import wladcalochow.model.DzienGry;
+import wladcalochow.model.Loch;
+import wladcalochow.model.MinisterFinansow;
+import wladcalochow.model.MinisterPracy;
+import wladcalochow.model.Potwor;
+import wladcalochow.model.Skarbiec;
+import wladcalochow.model.Walka;
+import wladcalochow.model.Zdarzenie;
+import wladcalochow.model.Zdarzenie.Informacja;
+import wladcalochow.model.Zdarzenie.Ton;
+import wladcalochow.model.strategia.Rozkaz;
+import wladcalochow.model.strategia.Ulepszenie;
+
+/** Korzeń stanu rozgrywki: loch, bieżący dzień, losowość z ziarnem i dziennik zdarzeń. */
+public class Gra implements Serializable {
+
+    public record WpisDziennika(String tekst, Ton ton) implements Serializable {
+    }
+
+    public static final int ZLOTO_STARTOWE = 300;
+    private static final int MAX_DZIENNIK = 400;
+
+    private final long ziarno;
+    private final Random los;
+    private final Loch loch;
+    private final List<MinisterFinansow> startowiFinansow;
+    private final List<MinisterPracy> startowiPracy;
+    private final List<WpisDziennika> dziennik = new ArrayList<>();
+
+    private int numerDnia;
+    private DzienGry dzien;
+    private MinisterFinansow nastepnyMinisterFinansow;
+    private MinisterPracy nastepnyMinisterPracy;
+    private boolean koniecGry;
+
+    private Gra(long ziarno) {
+        this.ziarno = ziarno;
+        this.los = new Random(ziarno);
+        this.loch = new Loch(new Skarbiec(ZLOTO_STARTOWE));
+        Set<String> zajete = new HashSet<>();
+        loch.zatrudnij(FabrykaIstot.goblin(los, zajete));
+        loch.zatrudnij(FabrykaIstot.goblin(los, zajete));
+        loch.zatrudnij(FabrykaIstot.ork(los, zajete));
+        this.startowiFinansow = GeneratorZdarzen.kandydaciFinansow(los, 3, zajete);
+        this.startowiPracy = GeneratorZdarzen.kandydaciPracy(los, 3, zajete);
+    }
+
+    /** Nowa rozgrywka. To samo ziarno daje ten sam przebieg przy tych samych decyzjach. */
+    public static Gra nowa(long ziarno) {
+        return new Gra(ziarno);
+    }
+
+    /** Pierwsza decyzja Władcy: wybór obu ministrów. Rozpoczyna dzień pierwszy. */
+    public void rozpocznij(MinisterFinansow finansow, MinisterPracy pracy) {
+        if (numerDnia > 0) {
+            throw new IllegalStateException("Gra już trwa");
+        }
+        loch.setMinisterFinansow(finansow);
+        loch.setMinisterPracy(pracy);
+        rozpocznijDzien();
+    }
+
+    public void rozpocznijDzien() {
+        if (koniecGry) {
+            throw new IllegalStateException("Gra jest zakończona");
+        }
+        numerDnia++;
+        loguj(new Informacja("Dzień " + numerDnia, Ton.NAGLOWEK));
+        if (nastepnyMinisterFinansow != null) {
+            loch.setMinisterFinansow(nastepnyMinisterFinansow);
+            loguj(new Informacja("Finanse obejmuje " + nastepnyMinisterFinansow + ".", Ton.NEUTRALNY));
+            nastepnyMinisterFinansow = null;
+        }
+        if (nastepnyMinisterPracy != null) {
+            loch.setMinisterPracy(nastepnyMinisterPracy);
+            loguj(new Informacja("Kadry obejmuje " + nastepnyMinisterPracy + ".", Ton.NEUTRALNY));
+            nastepnyMinisterPracy = null;
+        }
+        dzien = GeneratorZdarzen.nowyDzien(numerDnia, loch, los);
+        loguj(new Informacja(dzien.getRaport().opis(),
+                dzien.getRaport().minBohaterow() > 0 ? Ton.ZLY : Ton.NEUTRALNY));
+        if (dzien.getKandydaci().isEmpty()) {
+            loguj(new Informacja("Kandydaci do pracy: brak.", Ton.NEUTRALNY));
+        } else {
+            String lista = dzien.getKandydaci().stream()
+                    .map(p -> p.getImie() + " (" + p.nazwaRodzaju() + ", żołd " + p.getZold() + ")")
+                    .collect(Collectors.joining(", "));
+            loguj(new Informacja("Kandydaci do pracy: " + lista + ".", Ton.NEUTRALNY));
+        }
+    }
+
+    // ---- rozkazy Władcy ----
+
+    public int koszt(Rozkaz rozkaz) {
+        MinisterFinansow finansow = loch.getMinisterFinansow();
+        return switch (rozkaz) {
+            case Rozkaz.ZmianaMinistraFinansow r ->
+                    finansow.cenaPoNegocjacjach(Math.max(30, 3 * r.nowy().getPensja()));
+            case Rozkaz.ZmianaMinistraPracy r ->
+                    finansow.cenaPoNegocjacjach(Math.max(30, 3 * r.nowy().getPensja()));
+            case Rozkaz.Premia r -> Math.max(10, r.potwor().getZold());
+            case Rozkaz.ZakupUlepszenia r -> loch.poziom(r.ulepszenie()) >= Ulepszenie.MAX_POZIOM ? 0
+                    : finansow.cenaPoNegocjacjach(r.ulepszenie().koszt(loch.poziom(r.ulepszenie()) + 1));
+            case Rozkaz.LimitRekrutacji r -> 0;
+            case Rozkaz.ZmianaPostawy r -> 0;
+            case Rozkaz.Zwolnienie r -> 0;
+        };
+    }
+
+    /** Zwraca powód, dla którego rozkazu nie da się wydać, albo null, gdy wszystko w porządku. */
+    public String powodOdmowy(Rozkaz rozkaz) {
+        if (koniecGry || dzien == null || !dzien.maRozkazy()) {
+            return "Brak rozkazów na dziś";
+        }
+        String powod = switch (rozkaz) {
+            case Rozkaz.ZmianaMinistraFinansow r ->
+                    r.nowy() == loch.getMinisterFinansow() ? "Ten minister już urzęduje" : null;
+            case Rozkaz.ZmianaMinistraPracy r ->
+                    r.nowy() == loch.getMinisterPracy() ? "Ten minister już urzęduje" : null;
+            case Rozkaz.LimitRekrutacji r ->
+                    r.procent() == loch.getLimitRekrutacji() ? "Taki limit już obowiązuje" : null;
+            case Rozkaz.ZmianaPostawy r ->
+                    r.postawa() == loch.getPostawa() ? "Taka postawa już obowiązuje" : null;
+            case Rozkaz.Premia r -> !loch.getListaPotworow().contains(r.potwor()) ? "Nie ma takiego potwora"
+                    : r.potwor().getMorale() >= r.potwor().getMaxMorale() ? "Morale jest już pełne" : null;
+            case Rozkaz.Zwolnienie r ->
+                    !loch.getListaPotworow().contains(r.potwor()) ? "Nie ma takiego potwora" : null;
+            case Rozkaz.ZakupUlepszenia r ->
+                    loch.poziom(r.ulepszenie()) >= Ulepszenie.MAX_POZIOM ? "Najwyższy poziom" : null;
+        };
+        if (powod == null && koszt(rozkaz) > loch.getSkarbiec().getZloto()) {
+            powod = "Za mało złota (potrzeba " + koszt(rozkaz) + ")";
+        }
+        return powod;
+    }
+
+    public Zdarzenie wykonajRozkaz(Rozkaz rozkaz) {
+        String powod = powodOdmowy(rozkaz);
+        if (powod != null) {
+            throw new IllegalStateException(powod);
+        }
+        int koszt = koszt(rozkaz);
+        loch.getSkarbiec().wyplac(koszt);
+        dzien.zuzyjRozkaz();
+        String skutek = switch (rozkaz) {
+            case Rozkaz.ZmianaMinistraFinansow r -> {
+                nastepnyMinisterFinansow = r.nowy();
+                yield "od jutra finansami rządzi " + r.nowy();
+            }
+            case Rozkaz.ZmianaMinistraPracy r -> {
+                nastepnyMinisterPracy = r.nowy();
+                yield "od jutra kadrami rządzi " + r.nowy();
+            }
+            case Rozkaz.LimitRekrutacji r -> {
+                loch.setLimitRekrutacji(r.procent());
+                yield "na rekrutację wolno wydać najwyżej " + r.procent() + "% skarbca";
+            }
+            case Rozkaz.ZmianaPostawy r -> {
+                loch.setPostawa(r.postawa());
+                yield "postawa lochu: " + r.postawa().nazwa();
+            }
+            case Rozkaz.Premia r -> {
+                r.potwor().premia();
+                yield r.potwor().getImie() + " dostaje premię, morale rośnie";
+            }
+            case Rozkaz.Zwolnienie r -> {
+                loch.usun(r.potwor());
+                yield r.potwor().getImie() + " zostaje zwolniony";
+            }
+            case Rozkaz.ZakupUlepszenia r -> {
+                loch.ulepsz(r.ulepszenie());
+                yield r.ulepszenie().nazwa() + " ma teraz poziom " + loch.poziom(r.ulepszenie());
+            }
+        };
+        String cena = koszt > 0 ? " (koszt " + koszt + " złota)" : "";
+        Zdarzenie zdarzenie = new Informacja("Rozkaz: " + skutek + cena + ".", Ton.NEUTRALNY);
+        loguj(zdarzenie);
+        return zdarzenie;
+    }
+
+    // ---- przebieg dnia ----
+
+    /** Dochód, pensje, rekrutacja i przydział do kopalni. */
+    public List<Zdarzenie> rozegrajPoranek() {
+        List<Zdarzenie> zdarzenia = dzien.rozegrajPoranek(loch, los);
+        loguj(zdarzenia);
+        return zdarzenia;
+    }
+
+    /** Zwraca walkę do rozegrania krok po kroku albo null, gdy do walki nie doszło. */
+    public Walka rozpocznijObrone() {
+        List<Zdarzenie> zdarzenia = new ArrayList<>();
+        Walka walka = dzien.przygotujObrone(loch, los, zdarzenia);
+        loguj(zdarzenia);
+        return walka;
+    }
+
+    public List<Zdarzenie> krokWalki() {
+        List<Zdarzenie> zdarzenia = dzien.getWalka().krok();
+        loguj(zdarzenia);
+        return zdarzenia;
+    }
+
+    /** Skutki walki, wydobycie i wypłata żołdu. Po tej metodzie dzień jest zakończony. */
+    public List<Zdarzenie> zakonczDzien() {
+        List<Zdarzenie> zdarzenia = new ArrayList<>(dzien.zakonczObrone(loch, los));
+        zdarzenia.addAll(dzien.rozegrajWieczor(loch, los));
+        if (loch.czyZdobyty()) {
+            koniecGry = true;
+            zdarzenia.add(new Informacja("Trzecia przegrana obrona z rzędu: bohaterowie zdobywają loch. "
+                    + "To koniec panowania.", Ton.ZLY));
+        } else if (loch.getListaPotworow().isEmpty() && loch.getSkarbiec().czyPusty()) {
+            koniecGry = true;
+            zdarzenia.add(new Informacja("Loch opustoszał, a skarbiec świeci pustkami. To koniec panowania.",
+                    Ton.ZLY));
+        } else if (loch.getPorazkiZRzedu() > 0 && dzien.getWalka() != null
+                && dzien.getWalka().getWynik() == Walka.Wynik.OBRONA_PRZEGRANA) {
+            zdarzenia.add(new Informacja("Przegrane obrony z rzędu: " + loch.getPorazkiZRzedu() + " z "
+                    + Loch.PORAZKI_DO_UPADKU + ". Przy trzeciej loch upadnie.", Ton.ZLY));
+        }
+        loguj(zdarzenia);
+        return zdarzenia;
+    }
+
+    private void loguj(List<Zdarzenie> zdarzenia) {
+        zdarzenia.forEach(this::loguj);
+    }
+
+    private void loguj(Zdarzenie zdarzenie) {
+        dziennik.add(new WpisDziennika(zdarzenie.opis(), zdarzenie.ton()));
+        if (dziennik.size() > MAX_DZIENNIK) {
+            dziennik.subList(0, dziennik.size() - MAX_DZIENNIK).clear();
+        }
+    }
+
+    public Loch getLoch() {
+        return loch;
+    }
+
+    public DzienGry getDzien() {
+        return dzien;
+    }
+
+    public int getNumerDnia() {
+        return numerDnia;
+    }
+
+    public long getZiarno() {
+        return ziarno;
+    }
+
+    public boolean czyKoniecGry() {
+        return koniecGry;
+    }
+
+    public List<WpisDziennika> getDziennik() {
+        return Collections.unmodifiableList(dziennik);
+    }
+
+    public List<MinisterFinansow> getStartowiFinansow() {
+        return List.copyOf(startowiFinansow);
+    }
+
+    public List<MinisterPracy> getStartowiPracy() {
+        return List.copyOf(startowiPracy);
+    }
+
+    public MinisterFinansow getNastepnyMinisterFinansow() {
+        return nastepnyMinisterFinansow;
+    }
+
+    public MinisterPracy getNastepnyMinisterPracy() {
+        return nastepnyMinisterPracy;
+    }
+}
