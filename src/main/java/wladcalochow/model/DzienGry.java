@@ -82,7 +82,7 @@ public class DzienGry implements Serializable {
             bilans.pensja(finansow.getPensja());
         } else {
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
-            zdarzenia.add(new Informacja(finansow.getImie() + " nie dostał pensji i odchodzi. "
+            zdarzenia.add(new Informacja("Zabrakło na pensję: " + finansow.getImie() + " odchodzi. "
                     + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
         }
         MinisterPracy pracy = loch.getMinisterPracy();
@@ -90,7 +90,7 @@ public class DzienGry implements Serializable {
             bilans.pensja(pracy.getPensja());
         } else {
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
-            zdarzenia.add(new Informacja(pracy.getImie() + " nie dostał pensji i odchodzi. "
+            zdarzenia.add(new Informacja("Zabrakło na pensję: " + pracy.getImie() + " odchodzi. "
                     + "Kadry przejmuje darmowa stażystka.", Ton.ZLY));
         }
     }
@@ -274,7 +274,7 @@ public class DzienGry implements Serializable {
                     + wynik.oplaceni().size() + ".", Ton.ZLOTO));
         }
         if (!wynik.nieoplaceni().isEmpty()) {
-            zdarzenia.add(new Informacja("Bez żołdu zostali: " + imiona(wynik.nieoplaceni())
+            zdarzenia.add(new Informacja("Zabrakło żołdu dla: " + imiona(wynik.nieoplaceni())
                     + ". Ich morale spada.", Ton.ZLY));
         }
         if (!wynik.odeszli().isEmpty()) {

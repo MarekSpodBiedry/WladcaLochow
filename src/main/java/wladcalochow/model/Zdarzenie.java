@@ -70,7 +70,7 @@ public sealed interface Zdarzenie {
     record Ogluszenie(Istota kto) implements Zdarzenie {
         @Override
         public String opis() {
-            return kto.getImie() + " zostaje ogłuszony i straci kolejkę.";
+            return "Ogłuszenie: " + kto.getImie() + " straci najbliższą kolejkę.";
         }
 
         @Override
@@ -82,7 +82,7 @@ public sealed interface Zdarzenie {
     record StrataKolejki(Istota kto) implements Zdarzenie {
         @Override
         public String opis() {
-            return kto.getImie() + " jest ogłuszony i traci kolejkę.";
+            return kto.getImie() + " dochodzi do siebie po ogłuszeniu i traci kolejkę.";
         }
 
         @Override

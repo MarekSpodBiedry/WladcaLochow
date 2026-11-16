@@ -1,5 +1,7 @@
 package wladcalochow.silnik;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import wladcalochow.model.Bohater;
@@ -20,19 +22,28 @@ import wladcalochow.model.Zlodziej;
 /** Jedyne miejsce, w którym powstają istoty i ministrowie. Każdy obiekt jest nowy i unikatowy. */
 public final class FabrykaIstot {
 
+    /** Najdłuższe imię istoty; tyle miejsca rezerwują listy na ekranie. */
+    public static final int MAX_DLUGOSC_IMIENIA = 13;
+
+    // Pule są większe niż największa liczba istot jednego rodzaju naraz (loch + kandydaci, atak),
+    // więc imiona się nie powtarzają i nie trzeba do nich dopisywać numerów.
     private static final String[] GOBLINY = {"Zgrzyt", "Pchełka", "Smark", "Chichot", "Gnilec", "Wypłosz",
-        "Kleks", "Ścierwek", "Bzdryl", "Purchawka", "Glut", "Świst", "Okruch", "Chrzęst", "Pisk", "Mamlas"};
+        "Kleks", "Ścierwek", "Bzdryl", "Purchawka", "Glut", "Świst", "Okruch", "Chrzęst", "Pisk", "Mamlas",
+        "Ropuch", "Kikut", "Szczypek", "Brudas"};
     private static final String[] ORKI = {"Gruk", "Morg", "Urzak", "Brzdęk", "Gromokieł", "Zgniot", "Harat",
-        "Burgul", "Krwawiec", "Drągal", "Łomot", "Szczerb", "Warchoł", "Rozpruwacz", "Dzik", "Trzask"};
+        "Burgul", "Krwawiec", "Drągal", "Łomot", "Szczerb", "Warchoł", "Rozpruwacz", "Dzik", "Trzask",
+        "Kark", "Gburak", "Tasak", "Zadzior"};
     private static final String[] OGRY = {"Buła", "Tłuczek", "Wielgus", "Kafar", "Mamrot", "Głaz", "Bęben",
-        "Kloc", "Gniotek", "Baniak", "Młot", "Kolos", "Brzuchacz", "Grzmot"};
+        "Kloc", "Gniotek", "Baniak", "Młot", "Kolos", "Brzuchacz", "Grzmot", "Taran", "Garb", "Zwalisty",
+        "Moloch", "Byk", "Piec"};
     private static final String[] RYCERZE = {"Sir Bolko", "Sir Zawisza", "Sir Mściwój", "Sir Gniewko",
         "Sir Dobromir", "Sir Jaromir", "Sir Racibor", "Sir Zbyszko", "Sir Bożydar", "Sir Lutobor",
-        "Sir Sędziwój", "Sir Wszebor"};
+        "Sir Sędziwój", "Sir Wszebor", "Sir Niemir", "Sir Kazimir"};
     private static final String[] LUCZNICY = {"Bystra Jagna", "Cichy Wit", "Celna Dobrawa", "Leśny Bor",
-        "Wartki Miłosz", "Smukła Sława", "Sokoli Radek", "Czujna Wanda", "Zwinny Lech", "Rącza Mila"};
+        "Wartki Miłosz", "Smukła Sława", "Sokoli Radek", "Czujna Wanda", "Zwinny Lech", "Rącza Mila",
+        "Baczna Zofia", "Prędki Olek", "Cicha Bogna", "Strzelny Jur"};
     private static final String[] ZLODZIEJE = {"Lepki Staś", "Cień", "Szybki Lolo", "Wytrych", "Kieszonka",
-        "Myszka", "Paluch", "Śliski Zenek", "Kocur", "Szmer"};
+        "Myszka", "Paluch", "Śliski Zenek", "Kocur", "Szmer", "Fant", "Długa Ręka", "Łasica", "Cichy Krok"};
     private static final String[] MINISTROWIE_FINANSOW = {"Hieronim Skąpiec", "Baron Grosik",
         "Hrabina Sakiewka", "Onufry Liczykrupa", "Walenty Dukat", "Pani Moneta", "Ignacy Talar",
         "Zenobiusz Rachmistrz", "Księgowa Brzęczek", "Kanclerz Trzos"};
@@ -127,15 +138,23 @@ public final class FabrykaIstot {
         return min + los.nextInt(max - min + 1);
     }
 
-    /** Losuje imię, które nie jest jeszcze zajęte; gdy pula się wyczerpie, dodaje numer. */
+    /** Losuje imię spośród jeszcze wolnych; numer dostaje tylko wtedy, gdy cała pula jest zajęta. */
     private static String imie(String[] pula, Random los, Set<String> zajete) {
-        String baza = pula[los.nextInt(pula.length)];
-        for (int proba = 0; proba < 24 && zajete.contains(baza); proba++) {
-            baza = pula[los.nextInt(pula.length)];
+        List<String> wolne = new ArrayList<>();
+        for (String kandydat : pula) {
+            if (!zajete.contains(kandydat)) {
+                wolne.add(kandydat);
+            }
         }
-        String imie = baza;
-        for (int numer = 2; zajete.contains(imie); numer++) {
-            imie = baza + " " + numer;
+        String imie;
+        if (wolne.isEmpty()) {
+            String baza = pula[los.nextInt(pula.length)];
+            imie = baza;
+            for (int numer = 2; zajete.contains(imie); numer++) {
+                imie = baza + " " + numer;
+            }
+        } else {
+            imie = wolne.get(los.nextInt(wolne.size()));
         }
         zajete.add(imie);
         return imie;

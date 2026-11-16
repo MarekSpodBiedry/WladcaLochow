@@ -189,7 +189,7 @@ public class Gra implements Serializable {
             }
             case Rozkaz.Zwolnienie r -> {
                 loch.usun(r.potwor());
-                yield r.potwor().getImie() + " zostaje zwolniony";
+                yield r.potwor().getImie() + " opuszcza loch (zwolnienie)";
             }
             case Rozkaz.ZakupUlepszenia r -> {
                 loch.ulepsz(r.ulepszenie());

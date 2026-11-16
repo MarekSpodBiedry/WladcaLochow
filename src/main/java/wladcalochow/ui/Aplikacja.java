@@ -439,11 +439,8 @@ public final class Aplikacja {
 
         String znacznik = "";
         int kolorZnacznika = Paleta.TEKST_SLABY;
-        if (!istota.czyZyje()) {
-            znacznik = "padł";
-            kolorZnacznika = Paleta.CZERWIEN;
-        } else if (istota.czyUciekla()) {
-            znacznik = "zwiał";
+        if (!istota.wWalce()) {
+            znacznik = "";
         } else if (istota.czyOgluszona()) {
             znacznik = "ogł.";
             kolorZnacznika = Paleta.FIOLET;
