@@ -29,6 +29,7 @@ public class DzienGry implements Serializable {
     private final List<MinisterPracy> kandydaciPracy;
     private final RaportZwiadu raport;
 
+    private int limitRozkazow = ROZKAZY_NA_DZIEN;
     private int pozostaleRozkazy = ROZKAZY_NA_DZIEN;
     private Faza faza = Faza.PORANEK;
     private Walka walka;
@@ -269,6 +270,19 @@ public class DzienGry implements Serializable {
     }
 
     // ---- rozkazy ----
+
+    /** Ustawia, ile rozkazów wolno wydać tego dnia (w samouczku mniej niż zwykle). */
+    public void ustawLimitRozkazow(int limit) {
+        if (faza != Faza.PORANEK || pozostaleRozkazy != limitRozkazow) {
+            throw new IllegalStateException("Limit rozkazów ustawia się przed pierwszym rozkazem");
+        }
+        limitRozkazow = Math.max(0, limit);
+        pozostaleRozkazy = limitRozkazow;
+    }
+
+    public int getLimitRozkazow() {
+        return limitRozkazow;
+    }
 
     public boolean maRozkazy() {
         return pozostaleRozkazy > 0 && faza == Faza.PORANEK;

@@ -1,6 +1,7 @@
 package wladcalochow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -171,6 +172,56 @@ class SymulacjaTest {
         gra.rozpocznijDzien();
         assertEquals(2, gra.getDzien().getPozostaleRozkazy());
         assertNull(gra.powodOdmowy(new Rozkaz.ZmianaPostawy(Postawa.PELNA_OBRONA)));
+    }
+
+    @Test
+    void samouczekOdblokowujeRozkazyStopniowoIZaczynaOdLatwegoAtaku() {
+        Gra gra = Gra.nowaZSamouczkiem(3);
+        gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));
+        Rozkaz ulepszenie = new Rozkaz.ZakupUlepszenia(Ulepszenie.KOPALNIA);
+        Rozkaz postawa = new Rozkaz.ZmianaPostawy(Postawa.ODWOD);
+
+        assertEquals(0, gra.getDzien().getPozostaleRozkazy(), "dzień 1: sama obserwacja");
+        assertEquals("Dostępne od dnia 2", gra.powodOdmowy(ulepszenie));
+        assertTrue(gra.getDzien().getBohaterowie().isEmpty());
+        assertFalse(gra.getDzien().getKandydaci().isEmpty());
+
+        rozegrajDzien(gra);
+        gra.rozpocznijDzien();
+        assertEquals(1, gra.getDzien().getPozostaleRozkazy());
+        assertTrue(gra.czyNowy(ulepszenie.rodzaj()));
+        assertEquals("Dostępne od dnia 3", gra.powodOdmowy(postawa));
+        assertTrue(gra.getDzien().getBohaterowie().isEmpty());
+
+        rozegrajDzien(gra);
+        gra.rozpocznijDzien();
+        assertNull(gra.powodOdmowy(postawa));
+        assertEquals(1, gra.getDzien().getBohaterowie().size(), "dzień 3: jeden łatwy przeciwnik");
+        assertTrue(gra.getDzien().getBohaterowie().get(0).getMaxPunktyZycia() <= 50);
+        assertEquals(1, gra.getDzien().getRaport().minBohaterow());
+        rozegrajDzien(gra);
+        assertEquals(0, gra.getLoch().getPorazkiZRzedu(), "pierwszą walkę loch wygrywa");
+
+        gra.rozpocznijDzien();
+        rozegrajDzien(gra);
+        gra.rozpocznijDzien();
+        assertEquals(5, gra.getNumerDnia());
+        assertEquals(2, gra.getDzien().getPozostaleRozkazy(), "od dnia 5 pełne dwa rozkazy");
+        for (var rodzaj : wladcalochow.model.strategia.RodzajRozkazu.values()) {
+            assertTrue(gra.czyOdblokowany(rodzaj));
+        }
+        assertTrue(gra.czyTrwaSamouczek());
+        rozegrajDzien(gra);
+        gra.rozpocznijDzien();
+        assertFalse(gra.czyTrwaSamouczek());
+    }
+
+    @Test
+    void bezSamouczkaWszystkoJestDostepneOdPierwszegoDnia() {
+        Gra gra = nowaGra(3);
+        assertEquals(2, gra.getDzien().getPozostaleRozkazy());
+        assertNull(gra.powodOdmowy(new Rozkaz.ZmianaPostawy(Postawa.ODWOD)));
+        assertFalse(gra.czyTrwaSamouczek());
     }
 
     @Test

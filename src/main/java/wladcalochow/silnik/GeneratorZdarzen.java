@@ -23,10 +23,19 @@ public final class GeneratorZdarzen {
     }
 
     public static DzienGry nowyDzien(int numer, Loch loch, Random los) {
-        int dochod = los.nextDouble() < 0.15 ? 0 : 20 + los.nextInt(51) + 2 * numer;
+        return nowyDzien(numer, loch, los, false);
+    }
+
+    /** W samouczku pierwsze dni zawsze przynoszą dochód i kandydatów, a pierwszy atak jest łatwy. */
+    public static DzienGry nowyDzien(int numer, Loch loch, Random los, boolean samouczek) {
+        boolean lagodnie = samouczek && numer <= Samouczek.DZIEN_PIERWSZEGO_ATAKU;
+        int dochod = los.nextDouble() < 0.15 && !lagodnie ? 0 : 20 + los.nextInt(51) + 2 * numer;
+        if (lagodnie) {
+            dochod = Math.max(40, dochod);
+        }
 
         List<Potwor> kandydaci = new ArrayList<>();
-        if (los.nextDouble() >= 0.10) {
+        if (los.nextDouble() >= 0.10 || lagodnie) {
             int ilu = 2 + los.nextInt(3) + loch.getMinisterPracy().getWerbunek();
             Set<String> zajete = new HashSet<>();
             loch.getListaPotworow().forEach(p -> zajete.add(p.getImie()));
@@ -35,8 +44,16 @@ public final class GeneratorZdarzen {
             }
         }
 
-        List<Bohater> bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), los);
-        RaportZwiadu raport = zwiad(bohaterowie, los);
+        List<Bohater> bohaterowie;
+        RaportZwiadu raport;
+        if (samouczek && numer == Samouczek.DZIEN_PIERWSZEGO_ATAKU) {
+            Bohater giermek = FabrykaIstot.giermek(los, new HashSet<>());
+            bohaterowie = List.of(giermek);
+            raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
+        } else {
+            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), los);
+            raport = zwiad(bohaterowie, los);
+        }
         Set<String> ministrowie = new HashSet<>();
         ministrowie.add(loch.getMinisterFinansow().getImie());
         ministrowie.add(loch.getMinisterPracy().getImie());

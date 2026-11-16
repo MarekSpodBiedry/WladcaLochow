@@ -82,6 +82,12 @@ public final class FabrykaIstot {
                 zakres(los, 80, 100), zakres(los, 20, 40));
     }
 
+    /** Niedoświadczony rycerz: przeciwnik na pierwszy atak w samouczku. */
+    public static Rycerz giermek(Random los, Set<String> zajete) {
+        return new Rycerz(imie(RYCERZE, los, zajete), zakres(los, 9, 11), zakres(los, 40, 50),
+                zakres(los, 50, 60), zakres(los, 25, 35));
+    }
+
     public static Lucznik lucznik(Random los, Set<String> zajete) {
         return new Lucznik(imie(LUCZNICY, los, zajete), zakres(los, 16, 20), zakres(los, 40, 55),
                 zakres(los, 50, 70), zakres(los, 15, 30));

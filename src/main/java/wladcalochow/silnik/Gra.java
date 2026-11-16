@@ -18,6 +18,7 @@ import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
 import wladcalochow.model.Zdarzenie.Informacja;
 import wladcalochow.model.Zdarzenie.Ton;
+import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
 
@@ -31,6 +32,7 @@ public class Gra implements Serializable {
     private static final int MAX_DZIENNIK = 400;
 
     private final long ziarno;
+    private final boolean samouczek;
     private final Random los;
     private final Loch loch;
     private final List<MinisterFinansow> startowiFinansow;
@@ -43,8 +45,9 @@ public class Gra implements Serializable {
     private MinisterPracy nastepnyMinisterPracy;
     private boolean koniecGry;
 
-    private Gra(long ziarno) {
+    private Gra(long ziarno, boolean samouczek) {
         this.ziarno = ziarno;
+        this.samouczek = samouczek;
         this.los = new Random(ziarno);
         this.loch = new Loch(new Skarbiec(ZLOTO_STARTOWE));
         Set<String> zajete = new HashSet<>();
@@ -57,7 +60,12 @@ public class Gra implements Serializable {
 
     /** Nowa rozgrywka. To samo ziarno daje ten sam przebieg przy tych samych decyzjach. */
     public static Gra nowa(long ziarno) {
-        return new Gra(ziarno);
+        return new Gra(ziarno, false);
+    }
+
+    /** Nowa rozgrywka z samouczkiem: rozkazy odblokowują się stopniowo, a pierwszy atak jest łatwy. */
+    public static Gra nowaZSamouczkiem(long ziarno) {
+        return new Gra(ziarno, true);
     }
 
     /** Pierwsza decyzja Władcy: wybór obu ministrów. Rozpoczyna dzień pierwszy. */
@@ -86,7 +94,10 @@ public class Gra implements Serializable {
             loguj(new Informacja("Kadry obejmuje " + nastepnyMinisterPracy + ".", Ton.NEUTRALNY));
             nastepnyMinisterPracy = null;
         }
-        dzien = GeneratorZdarzen.nowyDzien(numerDnia, loch, los);
+        dzien = GeneratorZdarzen.nowyDzien(numerDnia, loch, los, samouczek);
+        if (samouczek) {
+            dzien.ustawLimitRozkazow(Samouczek.rozkazyNaDzien(numerDnia));
+        }
         loguj(new Informacja(dzien.getRaport().opis(),
                 dzien.getRaport().minBohaterow() > 0 ? Ton.ZLY : Ton.NEUTRALNY));
         if (dzien.getKandydaci().isEmpty()) {
@@ -119,6 +130,9 @@ public class Gra implements Serializable {
 
     /** Zwraca powód, dla którego rozkazu nie da się wydać, albo null, gdy wszystko w porządku. */
     public String powodOdmowy(Rozkaz rozkaz) {
+        if (!czyOdblokowany(rozkaz.rodzaj())) {
+            return "Dostępne od dnia " + rozkaz.rodzaj().dzienWSamouczku();
+        }
         if (koniecGry || dzien == null || !dzien.maRozkazy()) {
             return "Brak rozkazów na dziś";
         }
@@ -186,6 +200,21 @@ public class Gra implements Serializable {
         Zdarzenie zdarzenie = new Informacja("Rozkaz: " + skutek + cena + ".", Ton.NEUTRALNY);
         loguj(zdarzenie);
         return zdarzenie;
+    }
+
+    /** W samouczku grupy rozkazów pojawiają się w kolejnych dniach; poza nim wszystkie są dostępne. */
+    public boolean czyOdblokowany(RodzajRozkazu rodzaj) {
+        return !samouczek || numerDnia >= rodzaj.dzienWSamouczku();
+    }
+
+    /** Czy grupa rozkazów została odblokowana właśnie dzisiaj. */
+    public boolean czyNowy(RodzajRozkazu rodzaj) {
+        return samouczek && numerDnia == rodzaj.dzienWSamouczku();
+    }
+
+    /** Samouczek trwa przez pierwsze dni gry rozpoczętej w trybie samouczka. */
+    public boolean czyTrwaSamouczek() {
+        return samouczek && numerDnia <= Samouczek.OSTATNI_DZIEN;
     }
 
     // ---- przebieg dnia ----
