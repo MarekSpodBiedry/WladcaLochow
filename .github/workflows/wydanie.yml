@@ -69,9 +69,16 @@ jobs:
             echo "nowe=tak" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Sprawdź, czy instalator odpowiada źródłu
+        if: steps.wersja.outputs.nowe == 'tak'
+        run: python3 narzedzia/zbuduj-instalator.py --sprawdz
+
       - name: Zbuduj i przetestuj
         if: steps.wersja.outputs.nowe == 'tak'
-        run: mvn -B package
+        run: |
+          mvn -B package
+          cd target
+          sha256sum wladca-lochow.jar > wladca-lochow.jar.sha256
 
       - name: Opublikuj wydanie
         if: steps.wersja.outputs.nowe == 'tak'
@@ -80,16 +87,30 @@ jobs:
           TAG: ${{ steps.wersja.outputs.tag }}
         run: |
           cat > opis.md <<'OPIS'
-          ## Jak zagrać
+          ## Windows: instalator
+
+          Wklej do PowerShella:
+
+          ```
+          irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex
+          ```
+
+          Instalator sam pobierze grę (a gdy trzeba, także Javę) i zrobi skrót na pulpicie.
+
+          ## Linux i macOS
 
           1. Zainstaluj Javę 21 lub nowszą.
           2. Pobierz plik `wladca-lochow.jar` z listy poniżej.
-          3. Kliknij go dwukrotnie: gra sama otworzy okno terminala.
+          3. Kliknij go dwukrotnie albo wpisz w terminalu `java -jar wladca-lochow.jar`.
 
-          Jeśli dwuklik nie działa, otwórz terminal i wpisz `java -jar wladca-lochow.jar`.
           Okno terminala powinno mieć co najmniej 108 × 30 znaków.
           OPIS
-          gh release create "$TAG" target/wladca-lochow.jar \
+          pliki="target/wladca-lochow.jar target/wladca-lochow.jar.sha256"
+          if [ -f zasoby/ikona.ico ]; then
+            cp zasoby/ikona.ico target/ikona.ico
+            pliki="$pliki target/ikona.ico"
+          fi
+          gh release create "$TAG" $pliki \
             --repo "$GITHUB_REPOSITORY" \
             --title "Władca Lochów ${TAG#v}" \
             --notes-file opis.md \

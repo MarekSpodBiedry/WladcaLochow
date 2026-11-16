@@ -56,7 +56,30 @@ Wybierz nową grę **z samouczkiem**. Pierwszego dnia tylko patrzysz. Przez kole
 odsłania po jednej możliwości i tłumaczy, co się właśnie stało. Pierwszy przeciwnik to jeden
 niedoświadczony rycerz, z którym Twoje potwory poradzą sobie same.
 
-## Pobierz i graj
+## Instalacja na Windows
+
+Wklej do PowerShella:
+
+```powershell
+irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex
+```
+
+![Instalator](docs/podglad-instalator.png)
+
+Instalator niczego nie instaluje w systemie i nie potrzebuje uprawnień administratora:
+
+1. **Sprawdzanie Javy.** Szuka Javy 21 lub nowszej. Gdy jej nie ma, pobiera przenośną Javę
+   (Eclipse Temurin) do folderu gry.
+2. **Łączenie z serwerem.** Pyta GitHuba o najnowsze wydanie.
+3. **Pobieranie.** Zapisuje grę w `%LOCALAPPDATA%\WladcaLochow` i tworzy skróty na pulpicie
+   oraz w menu Start.
+4. **Sprawdzanie.** Porównuje sumę SHA-256 pobranego pliku i uruchamia autotest gry.
+
+Na koniec dowolny klawisz uruchamia grę. To samo polecenie służy do aktualizacji: gra przy starcie
+sama sprawdza, czy jest nowsze wydanie, i pokazuje w menu przycisk „Aktualizuj”.
+Odinstalowanie to usunięcie folderu `%LOCALAPPDATA%\WladcaLochow` i skrótów „Władca Lochów”.
+
+## Pobierz i graj (Linux, macOS)
 
 1. Zainstaluj Javę 21 lub nowszą.
 2. Pobierz [wladca-lochow.jar](https://github.com/MarekSpodBiedry/WladcaLochow/releases/latest/download/wladca-lochow.jar)
@@ -95,9 +118,12 @@ Opcje:
 | Opcja | Znaczenie |
 |---|---|
 | `--ziarno LICZBA` | powtarzalna rozgrywka: to samo ziarno i te same decyzje dają ten sam przebieg |
-| `--zapis PLIK` | inne miejsce zapisu gry (domyślnie `~/.wladcalochow/zapis.dat`) |
+| `--zapis PLIK` | inne miejsce zapisu gry (domyślnie `%LOCALAPPDATA%\WladcaLochow\zapis.dat` na Windows, `~/.wladcalochow/zapis.dat` na pozostałych systemach) |
 | `--kolory 24` lub `--kolory 256` | wymuszenie trybu kolorów (to samo robi zmienna `WLADCA_KOLORY`) |
 | `--bez-okna` | nie otwieraj nowego okna terminala, nawet gdy gra została uruchomiona bez niego |
+| `--bez-aktualizacji` | nie pytaj GitHuba o nową wersję (to samo robi zmienna `WLADCA_BEZ_AKTUALIZACJI`) |
+| `--wersja` | wypisz numer wersji i zakończ |
+| `--sprawdz` | autotest bez terminala: rozgrywa kilka dni i sprawdza zapis; używa go instalator |
 
 ## Sterowanie
 
@@ -167,6 +193,19 @@ Wydanie buduje się samo w GitHub Actions (workflow „Wydanie”): wystarczy zm
 `<version>` w `pom.xml` na głównej gałęzi. Workflow uruchamia testy, buduje `wladca-lochow.jar`
 i publikuje go jako wydanie `v<numer>`. Gdy wydanie o tym numerze już istnieje, nic się nie dzieje.
 Można też uruchomić workflow ręcznie w zakładce Actions.
+
+Instalator ma czytelne źródło w `narzedzia/install.zrodlo.ps1`. Publikowany `install.ps1` to ten sam
+skrypt zapisany samymi znakami ASCII; po każdej zmianie źródła trzeba go odświeżyć:
+
+```bash
+python3 narzedzia/zbuduj-instalator.py
+```
+
+Podgląd samej animacji instalatora, bez pobierania i bez zmian na dysku:
+
+```powershell
+$env:WLADCA_PODGLAD = '1'; .\install.ps1
+```
 
 ## Testy
 
