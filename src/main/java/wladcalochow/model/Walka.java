@@ -11,6 +11,8 @@ import java.util.Random;
  */
 public class Walka implements PoleWalki, Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public enum Wynik { TRWA, OBRONA_UDANA, OBRONA_PRZEGRANA }
 
     public static final double SZANSA_TRAFIENIA = 0.85;

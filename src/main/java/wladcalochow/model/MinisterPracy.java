@@ -7,6 +7,8 @@ import java.util.Random;
 /** Zatrudnia nowe potwory i deleguje część załogi do kopania złota. */
 public abstract class MinisterPracy implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private final String imie;
     private final int pensja;
     private final int werbunek;

@@ -6,6 +6,8 @@ import java.util.Random;
 /** Strachliwy i mało wytrzymały, ale strzela z procy i potrafi ogłuszyć cel. */
 public class Goblin extends Potwor {
 
+    private static final long serialVersionUID = 1L;
+
     public static final double SZANSA_OGLUSZENIA = 0.30;
 
     public Goblin(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zold) {

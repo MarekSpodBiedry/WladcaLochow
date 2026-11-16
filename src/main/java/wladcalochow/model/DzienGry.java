@@ -17,6 +17,8 @@ import wladcalochow.model.strategia.Ulepszenie;
  */
 public class DzienGry implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public enum Faza { PORANEK, OBRONA, WIECZOR, ZAKONCZONY }
 
     public static final int ROZKAZY_NA_DZIEN = 2;

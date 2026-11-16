@@ -14,6 +14,8 @@ import java.util.Random;
  */
 public class RundaWalki implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private final int numer;
     private final Deque<Istota> kolejka;
 

@@ -8,6 +8,8 @@ import java.util.Random;
 /** Mocno bije i strzela, więc zawsze działa pierwszy. Poluje na strzelających potworów. */
 public class Lucznik extends Bohater {
 
+    private static final long serialVersionUID = 1L;
+
     public Lucznik(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zloto) {
         super(imie, silaAtaku, maxPunktyZycia, maxMorale, zloto);
     }

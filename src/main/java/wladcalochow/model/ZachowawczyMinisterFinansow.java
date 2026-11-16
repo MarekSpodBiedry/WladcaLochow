@@ -6,6 +6,8 @@ package wladcalochow.model;
  */
 public class ZachowawczyMinisterFinansow extends MinisterFinansow {
 
+    private static final long serialVersionUID = 1L;
+
     public static final int DNI_REZERWY = 2;
 
     public ZachowawczyMinisterFinansow(String imie, int pensja, double negocjacje) {

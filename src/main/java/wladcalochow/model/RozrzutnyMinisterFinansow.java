@@ -3,6 +3,8 @@ package wladcalochow.model;
 /** Zostawia tylko tyle, ile trzeba na dzisiejszy żołd, a resztę oddaje na rekrutację. */
 public class RozrzutnyMinisterFinansow extends MinisterFinansow {
 
+    private static final long serialVersionUID = 1L;
+
     public RozrzutnyMinisterFinansow(String imie, int pensja, double negocjacje) {
         super(imie, pensja, negocjacje);
     }

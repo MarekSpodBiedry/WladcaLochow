@@ -6,6 +6,8 @@ import java.util.Random;
 /** Chodzący czołg. Morale nie spada mu w walce, a raz wybrany cel bije do samego końca. */
 public class Ogr extends Potwor {
 
+    private static final long serialVersionUID = 1L;
+
     private Istota upatrzonyCel;
 
     public Ogr(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zold) {

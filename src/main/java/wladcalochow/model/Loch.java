@@ -12,6 +12,8 @@ import wladcalochow.model.strategia.Ulepszenie;
 /** Loch Władcy: załoga potworów, skarbiec, dwaj ministrowie i ustawienia strategiczne. */
 public class Loch implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     /** Najwięcej potworów, ile pomieści loch. */
     public static final int POJEMNOSC = 12;
     /** Tyle przegranych obron z rzędu oznacza zdobycie lochu przez bohaterów. */

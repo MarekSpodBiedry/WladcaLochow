@@ -12,6 +12,8 @@ import java.util.Random;
  */
 public abstract class Istota implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     /** Spadek morale po każdym udanym ataku, niezależny od zadanych obrażeń. */
     public static final int SPADEK_MORALE_PO_TRAFIENIU = 8;
 

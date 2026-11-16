@@ -7,6 +7,8 @@ import java.util.List;
 /** Podsumowanie jednego dnia: skąd przyszło złoto, na co poszło i co stało się z załogą. */
 public class BilansDnia implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public enum Obrona { NIEROZEGRANA, SPOKOJ, PRZEKUPSTWO, WYGRANA, PRZEGRANA, BEZ_OBRONCOW }
 
     private final int zlotoRano;

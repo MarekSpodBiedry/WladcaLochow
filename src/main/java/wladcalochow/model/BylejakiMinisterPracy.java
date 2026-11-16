@@ -8,6 +8,8 @@ import java.util.Random;
 /** Zatrudnia jak leci z listy i stara się wydać jak najwięcej. Do kopalni wysyła losowych. */
 public class BylejakiMinisterPracy extends MinisterPracy {
 
+    private static final long serialVersionUID = 1L;
+
     public BylejakiMinisterPracy(String imie, int pensja, int werbunek, double nadzorKopalni) {
         super(imie, pensja, werbunek, nadzorKopalni);
     }

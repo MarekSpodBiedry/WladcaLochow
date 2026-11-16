@@ -5,6 +5,8 @@ import java.io.Serializable;
 /** Budżet lochu. Pilnuje, żeby złoto nigdy nie zeszło poniżej zera. */
 public class Skarbiec implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private int zloto;
 
     public Skarbiec(int zloto) {

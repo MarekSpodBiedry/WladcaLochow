@@ -19,6 +19,34 @@ class ZapisGryTest {
         return gra;
     }
 
+    /**
+     * Klasy zapisywane w pliku zapisu mają stały serialVersionUID. Bez niego każda zmiana w klasie
+     * (nowe pole, nowa metoda) sprawia, że stare zapisy przestają się wczytywać.
+     */
+    @Test
+    void klasyZapisuMajaStalyNumerWersji() throws Exception {
+        Path klasy = Path.of(Gra.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        List<String> bezNumeru = new java.util.ArrayList<>();
+        try (var pliki = Files.walk(klasy.resolve("wladcalochow"))) {
+            for (Path plik : pliki.filter(p -> p.toString().endsWith(".class")).toList()) {
+                String nazwa = klasy.relativize(plik).toString().replace('\\', '/').replace('/', '.')
+                        .replaceAll("\\.class$", "");
+                Class<?> klasa = Class.forName(nazwa, false, getClass().getClassLoader());
+                boolean zapisywana = java.io.Serializable.class.isAssignableFrom(klasa) && !klasa.isRecord()
+                        && !klasa.isEnum() && !klasa.isInterface() && !klasa.isAnonymousClass()
+                        && !klasa.isSynthetic();
+                if (zapisywana) {
+                    try {
+                        klasa.getDeclaredField("serialVersionUID");
+                    } catch (NoSuchFieldException e) {
+                        bezNumeru.add(nazwa);
+                    }
+                }
+            }
+        }
+        assertTrue(bezNumeru.isEmpty(), "bez serialVersionUID: " + bezNumeru);
+    }
+
     @Test
     void pustyFolderMaDziesiecWolnychSlotow(@TempDir Path folder) {
         List<ZapisGry.Slot> sloty = ZapisGry.sloty(folder.resolve("zapisy"));

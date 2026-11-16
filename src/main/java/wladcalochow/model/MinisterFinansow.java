@@ -9,6 +9,8 @@ import java.util.Random;
 /** Rozporządza budżetem i wypłaca żołd. Podklasy różnią się tym, ile oddają na rekrutację. */
 public abstract class MinisterFinansow implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     /** Wynik wieczornej wypłaty żołdu. */
     public record WynikWyplaty(int wyplacono, List<Potwor> oplaceni, List<Potwor> nieoplaceni,
                                List<Potwor> odeszli) {

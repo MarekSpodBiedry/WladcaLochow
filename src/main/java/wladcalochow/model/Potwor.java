@@ -3,6 +3,8 @@ package wladcalochow.model;
 /** Najemnik Władcy. Oprócz statystyk istoty ma żołd, doświadczenie i przydział do kopalni. */
 public abstract class Potwor extends Istota {
 
+    private static final long serialVersionUID = 1L;
+
     public static final int MAX_POZIOM = 9;
     public static final double AWANS = 0.10;
 

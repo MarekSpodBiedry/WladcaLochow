@@ -8,6 +8,8 @@ import java.util.Random;
 /** Zatrudnia najsilniejszych i rezygnuje, gdy nie stać go na kolejnego. Do kopalni wysyła najsłabszych. */
 public class RamboMinisterPracy extends MinisterPracy {
 
+    private static final long serialVersionUID = 1L;
+
     public RamboMinisterPracy(String imie, int pensja, int werbunek, double nadzorKopalni) {
         super(imie, pensja, werbunek, nadzorKopalni);
     }

@@ -25,6 +25,8 @@ import wladcalochow.model.strategia.Ulepszenie;
 /** Korzeń stanu rozgrywki: loch, bieżący dzień, losowość z ziarnem i dziennik zdarzeń. */
 public class Gra implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public record WpisDziennika(String tekst, Ton ton) implements Serializable {
     }
 
