@@ -46,18 +46,24 @@ public final class Uruchamiacz {
      * Polecenia otwierające terminal z grą, od najlepszego do najprostszego.
      *
      * @param polecenieGry program i argumenty, które mają wystartować w nowym oknie
+     * @param katalog      katalog roboczy gry w nowym oknie (Windows Terminal dostaje go wprost), może być null
      * @param dostepny     sprawdza, czy program o danej nazwie jest zainstalowany
      */
-    public static List<List<String>> polecenia(SystemOperacyjny system, List<String> polecenieGry,
+    public static List<List<String>> polecenia(SystemOperacyjny system, List<String> polecenieGry, Path katalog,
                                                Predicate<String> dostepny) {
         List<List<String>> wynik = new ArrayList<>();
         switch (system) {
             case WINDOWS -> {
                 if (dostepny.test("wt.exe")) {
                     // Windows Terminal: pełne kolory i emoji; okno zmaksymalizowane, żeby gra się zmieściła.
-                    wynik.add(zlacz(List.of("wt.exe", "-M", "new-tab", "--title", TYTUL), polecenieGry));
+                    // Nowa karta nie dziedziczy katalogu roboczego, więc dostaje go przez -d.
+                    List<String> wt = new ArrayList<>(List.of("wt.exe", "-M", "new-tab", "--title", TYTUL));
+                    if (katalog != null) {
+                        wt.addAll(List.of("-d", katalog.toString()));
+                    }
+                    wynik.add(zlacz(wt, polecenieGry));
                 }
-                // Zwykła konsola Windows: "start" otwiera nowe, zmaksymalizowane okno.
+                // Zwykła konsola Windows: "start" otwiera nowe, zmaksymalizowane okno w bieżącym katalogu.
                 wynik.add(zlacz(List.of("cmd.exe", "/c", "start", TYTUL, "/MAX"), polecenieGry));
             }
             case MACOS -> wynik.add(List.of("osascript",
@@ -199,10 +205,19 @@ public final class Uruchamiacz {
             return false;
         }
         SystemOperacyjny system = wykryjSystem();
-        List<String> gra = polecenieGry(programJava(system), jar, argumenty);
-        for (List<String> polecenie : polecenia(system, gra, Uruchamiacz::naSciezce)) {
+        // Na Windows Java czyta argumenty w stronie kodowej systemu: pełna ścieżka z polskimi literami
+        // (np. w nazwie użytkownika) zamieniłaby się w znaki zapytania. Dlatego gra dostaje samą nazwę
+        // pliku, a folder gry jest katalogiem roboczym.
+        boolean windows = system == SystemOperacyjny.WINDOWS && jar.getParent() != null;
+        Path katalog = windows ? jar.getParent() : null;
+        List<String> gra = polecenieGry(programJava(system), windows ? jar.getFileName() : jar, argumenty);
+        for (List<String> polecenie : polecenia(system, gra, katalog, Uruchamiacz::naSciezce)) {
             try {
-                Process proces = new ProcessBuilder(polecenie)
+                ProcessBuilder budowa = new ProcessBuilder(polecenie);
+                if (katalog != null) {
+                    budowa.directory(katalog.toFile());
+                }
+                Process proces = budowa
                         .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                         .redirectError(ProcessBuilder.Redirect.DISCARD)
                         .start();

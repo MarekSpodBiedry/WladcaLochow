@@ -25,13 +25,15 @@ class UruchamiaczTest {
 
     @Test
     void naWindowsNajpierwWindowsTerminalPotemZwyklaKonsola() {
-        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.WINDOWS, GRA, program -> true);
+        Path katalog = Path.of("C:\\Users\\Michał\\AppData\\Local\\WladcaLochow");
+        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.WINDOWS, GRA, katalog, program -> true);
         assertEquals(2, polecenia.size());
-        assertEquals("wt.exe", polecenia.get(0).get(0));
+        assertEquals(List.of("wt.exe", "-M", "new-tab", "--title", "Wladca Lochow", "-d", katalog.toString()),
+                polecenia.get(0).subList(0, 7), "nowa karta Windows Terminala dostaje folder gry");
         assertEquals(List.of("cmd.exe", "/c", "start", "Wladca Lochow", "/MAX", "/opt/java/bin/java", "-jar",
                 "/gry/wladca-lochow.jar", "--w-oknie"), polecenia.get(1));
 
-        List<List<String>> bezWt = Uruchamiacz.polecenia(SystemOperacyjny.WINDOWS, GRA, program -> false);
+        List<List<String>> bezWt = Uruchamiacz.polecenia(SystemOperacyjny.WINDOWS, GRA, null, program -> false);
         assertEquals(1, bezWt.size());
         assertEquals("cmd.exe", bezWt.get(0).get(0));
     }
@@ -39,7 +41,7 @@ class UruchamiaczTest {
     @Test
     void naLinuksieTylkoZainstalowaneTerminaleWKolejnosciOdNajlepszego() {
         Set<String> zainstalowane = Set.of("xterm", "konsole");
-        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.LINUX, GRA, zainstalowane::contains);
+        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.LINUX, GRA, null, zainstalowane::contains);
         assertEquals(2, polecenia.size());
         assertEquals(List.of("konsole", "-e", "/opt/java/bin/java", "-jar", "/gry/wladca-lochow.jar", "--w-oknie"),
                 polecenia.get(0));
@@ -49,12 +51,12 @@ class UruchamiaczTest {
                 polecenia.get(1).subList(polecenia.get(1).size() - 3, polecenia.get(1).size()),
                 "xterm nie ogłasza pełnych kolorów, więc gra dostaje je wprost");
 
-        assertTrue(Uruchamiacz.polecenia(SystemOperacyjny.LINUX, GRA, program -> false).isEmpty());
+        assertTrue(Uruchamiacz.polecenia(SystemOperacyjny.LINUX, GRA, null, program -> false).isEmpty());
     }
 
     @Test
     void naMacuTerminalDostajePoleceniePowlokiIRozmiar() {
-        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.MACOS, GRA, program -> false);
+        List<List<String>> polecenia = Uruchamiacz.polecenia(SystemOperacyjny.MACOS, GRA, null, program -> false);
         assertEquals(1, polecenia.size());
         List<String> osascript = polecenia.get(0);
         assertEquals("osascript", osascript.get(0));

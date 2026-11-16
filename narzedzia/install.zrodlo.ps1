@@ -50,7 +50,11 @@
     if ($env:WLADCA_FOLDER) { $Folder = $env:WLADCA_FOLDER }
     elseif ($NaWindows) { $Folder = Join-Path $env:LOCALAPPDATA 'WladcaLochow' }
     else { $Folder = Join-Path ([IO.Path]::GetTempPath()) 'WladcaLochow-test' }
-    $Jar = Join-Path $Folder 'wladca-lochow.jar'
+    # Java dostaje sama nazwe pliku gry, a folder gry jest katalogiem roboczym. Java czyta argumenty
+    # w stronie kodowej systemu, wiec pelna sciezka z polskimi literami (np. w nazwie uzytkownika)
+    # na Windows po angielsku zamienilaby sie w znaki zapytania.
+    $NazwaJar = 'wladca-lochow.jar'
+    $Jar = Join-Path $Folder $NazwaJar
     if ($NaWindows) { $NazwaJava = 'java.exe' } else { $NazwaJava = 'java' }
 
     # ------------------------------------------------------------------ znaki i kolory
@@ -480,10 +484,11 @@
     }
 
     # Uruchamia program bez okna i czeka, nie zatrzymujac animacji. Zwraca kod wyjscia i wypisany tekst.
-    function Uruchom([string]$program, [string]$argumenty) {
+    function Uruchom([string]$program, [string]$argumenty, [string]$katalog = '') {
         $start = New-Object System.Diagnostics.ProcessStartInfo
         $start.FileName = $program
         $start.Arguments = $argumenty
+        if ($katalog) { $start.WorkingDirectory = $katalog }
         $start.UseShellExecute = $false
         $start.CreateNoWindow = $true
         $start.RedirectStandardOutput = $true
@@ -651,15 +656,55 @@
 
     # ------------------------------------------------------------------ krok 2: pobieranie
 
+    # Skrot przez IShellLinkW, a nie WScript.Shell: WScript.Shell zapisuje sciezki w stronie kodowej
+    # systemu, wiec na Windows po angielsku polskie litery (np. w nazwie uzytkownika) zamienia na inne.
     function Skrot([string]$sciezka, [string]$cel, [string]$argumenty, [string]$ikona) {
-        $powloka = New-Object -ComObject WScript.Shell
-        $skrot = $powloka.CreateShortcut($sciezka)
-        $skrot.TargetPath = $cel
-        $skrot.Arguments = $argumenty
-        $skrot.WorkingDirectory = $Folder
-        $skrot.Description = T 'Władca Lochów'
-        if ($ikona) { $skrot.IconLocation = $ikona }
-        $skrot.Save()
+        if (-not ('WladcaLochow.Skroty' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+namespace WladcaLochow {
+    [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IShellLinkW {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder plik, int ile, IntPtr dane, uint flagi);
+        void GetIDList(out IntPtr lista);
+        void SetIDList(IntPtr lista);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder opis, int ile);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string opis);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder katalog, int ile);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string katalog);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder argumenty, int ile);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string argumenty);
+        void GetHotkey(out short klawisz);
+        void SetHotkey(short klawisz);
+        void GetShowCmd(out int tryb);
+        void SetShowCmd(int tryb);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder ikona, int ile, out int numer);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string ikona, int numer);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string sciezka, uint zarezerwowane);
+        void Resolve(IntPtr okno, uint flagi);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string plik);
+    }
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    class ShellLink {
+    }
+    public static class Skroty {
+        public static void Utworz(string plik, string cel, string argumenty, string katalog, string opis, string ikona) {
+            IShellLinkW skrot = (IShellLinkW)new ShellLink();
+            skrot.SetPath(cel);
+            skrot.SetArguments(argumenty);
+            skrot.SetWorkingDirectory(katalog);
+            skrot.SetDescription(opis);
+            if (!String.IsNullOrEmpty(ikona)) { skrot.SetIconLocation(ikona, 0); }
+            ((IPersistFile)skrot).Save(plik, true);
+        }
+    }
+}
+'@
+        }
+        [WladcaLochow.Skroty]::Utworz($sciezka, $cel, $argumenty, $Folder, (T 'Władca Lochów'), $ikona)
     }
 
     function KrokPobieranie {
@@ -687,9 +732,14 @@
             $S.Javaw = Join-Path ([IO.Path]::GetDirectoryName($S.Java)) 'javaw.exe'
             if (-not (Test-Path -LiteralPath $S.Javaw)) { $S.Javaw = $S.Java }
             $nazwa = (T 'Władca Lochów') + '.lnk'
-            $argumenty = '-jar "' + $Jar + '"'
+            $argumenty = '-jar ' + $NazwaJar
             foreach ($miejsce in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-                if ($miejsce) { Skrot (Join-Path $miejsce $nazwa) $S.Javaw $argumenty $ikona }
+                if ($miejsce) {
+                    Skrot (Join-Path $miejsce $nazwa) $S.Javaw $argumenty $ikona
+                    # Instalator 1.1.x zapisywal skrot jako "Wladca Lochow" bez polskiej litery; zostalby obok nowego.
+                    $staryPlik = Join-Path $miejsce ((T 'Wladca Lochów') + '.lnk')
+                    if (Test-Path -LiteralPath $staryPlik) { Remove-Item -LiteralPath $staryPlik -Force }
+                }
             }
         }
         if ($S.Aktualna) { Zakoncz 2 (T 'bez zmian') } else { Zakoncz 2 ((MB $S.Rozmiar) + ' MB') }
@@ -704,7 +754,7 @@
             throw (T 'Pobrany plik gry jest uszkodzony (suma SHA-256 się nie zgadza). Spróbuj ponownie.')
         }
         Postep 3 0.45 (T 'test gry')
-        $wynik = Uruchom $S.Java ('-jar "' + $Jar + '" --sprawdz')
+        $wynik = Uruchom $S.Java ('-jar ' + $NazwaJar + ' --sprawdz') $Folder
         if ($wynik.Kod -ne 0) {
             throw ((T 'Gra nie przeszła testu na tym komputerze: ') + $wynik.Tekst.Trim())
         }
@@ -832,6 +882,6 @@
     Write-Host ((T 'Władca Lochów ') + $S.Wersja + (T ' jest zainstalowany w: ') + $Folder)
     if ($NaWindows -and -not $BezStartu) {
         Write-Host (T 'Uruchamiam grę. Następnym razem użyj skrótu na pulpicie.')
-        Start-Process -FilePath $S.Javaw -ArgumentList ('-jar "' + $Jar + '"') -WorkingDirectory $Folder
+        Start-Process -FilePath $S.Javaw -ArgumentList ('-jar ' + $NazwaJar) -WorkingDirectory $Folder
     }
 }
