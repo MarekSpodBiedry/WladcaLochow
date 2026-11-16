@@ -261,6 +261,11 @@ public class Gra implements Serializable {
         return zdarzenia;
     }
 
+    /** Dopisuje do dziennika notatkę spoza przebiegu dnia, np. uzasadnienie decyzji Władcy. */
+    public void zanotuj(String tekst) {
+        loguj(new Informacja(tekst, Ton.NEUTRALNY));
+    }
+
     private void loguj(List<Zdarzenie> zdarzenia) {
         zdarzenia.forEach(this::loguj);
     }

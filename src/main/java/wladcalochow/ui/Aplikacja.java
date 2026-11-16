@@ -71,6 +71,12 @@ public final class Aplikacja {
     private final Path folderZapisow;
     /** Slot bieżącej rozgrywki (1..10) albo 0, gdy gra jeszcze nie ma slotu. */
     private int slot;
+    /** Gdy Claude gra za Władcę: most do plików, przez które dostaje stan i odsyła decyzje. */
+    private final MostClaude most;
+    private boolean claudeGra;
+    /** Identyfikator prośby, na którą czekamy (null: na nic nie czekamy). */
+    private String czekamNa;
+    private boolean czekamNaStart;
     private final Long ziarnoStartowe;
     private final List<Strefa> strefy = new ArrayList<>();
     private final Map<Character, Runnable> skroty = new HashMap<>();
@@ -90,7 +96,7 @@ public final class Aplikacja {
     private volatile String nowaWersja;
 
     public Aplikacja(Path folderZapisow, Long ziarnoStartowe, boolean sprawdzajAktualizacje) throws IOException {
-        this(new TerminalGry(), folderZapisow, ziarnoStartowe);
+        this(new TerminalGry(), folderZapisow, ziarnoStartowe, folderZapisow.resolveSibling("claude"));
         if (sprawdzajAktualizacje) {
             Aktualizacje.sprawdzWTle(Wersja.numer())
                     .thenAccept(wynik -> wynik.ifPresent(wersja -> nowaWersja = wersja));
@@ -128,8 +134,13 @@ public final class Aplikacja {
     }
 
     Aplikacja(Konsola terminal, Path folderZapisow, Long ziarnoStartowe) {
+        this(terminal, folderZapisow, ziarnoStartowe, folderZapisow.resolve("claude"));
+    }
+
+    Aplikacja(Konsola terminal, Path folderZapisow, Long ziarnoStartowe, Path folderClaude) {
         this.terminal = terminal;
         this.folderZapisow = folderZapisow;
+        this.most = new MostClaude(folderClaude);
         this.ziarnoStartowe = ziarnoStartowe;
     }
 
@@ -144,6 +155,7 @@ public final class Aplikacja {
                         if (samaGra) {
                             krokWalki();
                         }
+                        sprawdzClaude();
                     }
                     case Wejscie.Koniec k -> {
                         zapiszPrzyWyjsciu();
@@ -318,6 +330,7 @@ public final class Aplikacja {
             guziki.add(new Guzik('a', "Aktualizuj", false, true, this::aktualizuj, true));
         }
         guziki.add(new Guzik('w', "Wczytaj", false, jestZapis, this::dialogWczytaj));
+        guziki.add(new Guzik('c', claudeGra ? "Claude: wł." : "Claude: wył.", false, true, this::przelaczClaude));
         guziki.add(new Guzik('o', "O grze", false, true, this::dialogOGrze));
         guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
         guziki.add(new Guzik('q', "Wyjście", false, true, this::wyjdzZGry));
@@ -350,6 +363,10 @@ public final class Aplikacja {
         panelBoczny(e, sw, 1, PANEL_SZER, dol - 1, pokazWalke ? walka : null);
         dziennik(e, 0, 1 + Scena.WYS, sw, dol - 1 - Scena.WYS);
         pasek(e, guzikiPulpitu(walka));
+        if (tryb == Tryb.PORANEK) {
+            // Na pasku nie ma już miejsca, więc Claude'a włącza i wyłącza sam klawisz C (podpowiedź w dzienniku).
+            skroty.put('c', this::przelaczClaude);
+        }
     }
 
     private static List<Potwor> obroncyWalki(Walka walka) {
@@ -417,6 +434,12 @@ public final class Aplikacja {
         return switch (tryb) {
             case PORANEK -> {
                 int rozkazy = gra.getDzien().getPozostaleRozkazy();
+                if (czekamNa != null) {
+                    yield "Czekam na decyzje Claude'a · C: graj sam";
+                }
+                if (claudeGra) {
+                    yield "Enter: start dnia · C: wyłącz Claude'a";
+                }
                 yield rozkazy > 0
                         ? "Wydaj rozkaz (zostało " + rozkazy + ") albo Enter: start dnia"
                         : "Enter rozpoczyna dzień";
@@ -634,7 +657,7 @@ public final class Aplikacja {
                 guzikRozkazu(guziki, RodzajRozkazu.ULEPSZENIA, 'u', this::dialogUlepszenia);
                 guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
                 guziki.add(new Guzik('q', "Wyjdź", false, true, this::wyjdzDoMenu));
-                guziki.add(new Guzik('\n', "Rozpocznij dzień", true, true, this::rozegrajDzien));
+                guziki.add(new Guzik('\n', "Rozpocznij dzień", true, czekamNa == null, this::rozegrajDzien));
             }
             case WALKA -> {
                 boolean trwa = walka != null && !walka.czyZakonczona();
@@ -670,7 +693,7 @@ public final class Aplikacja {
         if (!gra.czyOdblokowany(rodzaj)) {
             return;
         }
-        boolean aktywny = gra.getDzien().maRozkazy() || rodzaj == RodzajRozkazu.POTWORY;
+        boolean aktywny = czekamNa == null && (gra.getDzien().maRozkazy() || rodzaj == RodzajRozkazu.POTWORY);
         guziki.add(new Guzik(klawisz, rodzaj.nazwa(), false, aktywny, akcja, gra.czyNowy(rodzaj)));
     }
 
@@ -754,6 +777,11 @@ public final class Aplikacja {
     }
 
     private void nowaGraWSlocie(int numer) {
+        if (claudeGra) {
+            // Claude gra bez samouczka i sam wybiera startowych ministrów.
+            zacznijNowaGre(false, numer);
+            return;
+        }
         dialog = new Dialog("Nowa gra · slot " + numer,
                 List.of("Samouczek prowadzi przez pierwsze 5 dni: możliwości pojawiają się po jednej, "
                         + "a doradca tłumaczy, co się dzieje."),
@@ -817,6 +845,7 @@ public final class Aplikacja {
         } else {
             tryb = Tryb.PORANEK;
             radaPoranna();
+            poprosClaudeOPoranek();
         }
     }
 
@@ -826,7 +855,9 @@ public final class Aplikacja {
         // Do wyboru ministrów w tle jest menu: nowa gra nie ma jeszcze dnia, więc pulpitu nie da się narysować.
         tryb = Tryb.MENU;
         gra = samouczek ? Gra.nowaZSamouczkiem(ziarno) : Gra.nowa(ziarno);
-        if (samouczek) {
+        if (claudeGra) {
+            poprosClaudeOStart();
+        } else if (samouczek) {
             strona(Doradca.STRONY, 0, "Wybierz ministrów", this::wybierzMinistraFinansow, this::porzucNowaGre);
         } else {
             wybierzMinistraFinansow();
@@ -928,7 +959,164 @@ public final class Aplikacja {
         dialog = null;
         gra = null;
         slot = 0;
+        czekamNa = null;
         tryb = Tryb.MENU;
+    }
+
+    // ---- Claude gra za Władcę ----
+
+    /** Włącza albo wyłącza Claude'a. W trakcie poranka od razu prosi go o decyzje albo przestaje czekać. */
+    private void przelaczClaude() {
+        claudeGra = !claudeGra;
+        if (!claudeGra) {
+            czekamNa = null;
+            komunikat = null;
+        } else if (gra != null && tryb == Tryb.PORANEK) {
+            poprosClaudeOPoranek();
+        }
+    }
+
+    private void poprosClaudeOStart() {
+        try {
+            czekamNa = most.wyslijStart(gra);
+            czekamNaStart = true;
+        } catch (IOException | RuntimeException e) {
+            bladClaude("Nie udało się zapisać stanu gry dla Claude'a: " + e.getMessage());
+            return;
+        }
+        dialog = new Dialog("Claude wybiera ministrów",
+                List.of("Czekam na odpowiedź Claude'a. Stan gry jest w pliku:",
+                        most.folder().resolve(MostClaude.PLIK_STANU).toString()),
+                List.of(new Dialog.Opcja("Wybierz sam", "Przestań czekać i wybierz ministrów samodzielnie.", true,
+                        () -> {
+                            czekamNa = null;
+                            wybierzMinistraFinansow();
+                        })),
+                this::porzucNowaGre);
+    }
+
+    /** Rano, gdy Claude gra: zapisuje stan i czeka na jego rozkazy. */
+    private void poprosClaudeOPoranek() {
+        if (!claudeGra || gra == null || gra.czyKoniecGry() || tryb != Tryb.PORANEK
+                || gra.getDzien().getFaza() != DzienGry.Faza.PORANEK) {
+            return;
+        }
+        try {
+            czekamNa = most.wyslijPoranek(gra);
+            czekamNaStart = false;
+        } catch (IOException | RuntimeException e) {
+            bladClaude("Nie udało się zapisać stanu gry dla Claude'a: " + e.getMessage());
+        }
+    }
+
+    /** Sprawdza, czy Claude już odpowiedział. Wywoływane, gdy gracz niczego nie naciska. */
+    void sprawdzClaude() {
+        if (czekamNa == null) {
+            return;
+        }
+        try {
+            if (czekamNaStart) {
+                var start = most.odbierzStart(czekamNa, gra);
+                if (start.isPresent()) {
+                    czekamNa = null;
+                    dialog = null;
+                    gra.rozpocznij(start.get().finansow(), start.get().pracy());
+                    gra.zanotuj("Claude wybiera ministrów: " + start.get().finansow() + " i " + start.get().pracy()
+                            + ". " + jednaLinia(start.get().powod()));
+                    most.zapiszHistorie("Start: " + start.get().finansow() + ", " + start.get().pracy());
+                    tryb = Tryb.PORANEK;
+                    przewiniecie = 0;
+                    zapisz();
+                    poprosClaudeOPoranek();
+                }
+            } else {
+                var decyzja = most.odbierzPoranek(czekamNa);
+                if (decyzja.isPresent()) {
+                    czekamNa = null;
+                    wykonajDecyzje(decyzja.get());
+                }
+            }
+        } catch (RuntimeException e) {
+            czekamNa = null;
+            bladClaude("Odpowiedź Claude'a jest błędna: " + e.getMessage());
+        }
+    }
+
+    /** Wykonuje rozkazy Claude'a po kolei i pokazuje graczowi, co zrobił i dlaczego. */
+    private void wykonajDecyzje(MostClaude.Decyzja decyzja) {
+        // Numery potworów i ministrów odnoszą się do porannej listy, więc najpierw zamieniamy wszystkie na rozkazy.
+        List<Object> rozkazy = new ArrayList<>();
+        for (String polecenie : decyzja.rozkazy()) {
+            try {
+                rozkazy.add(MostClaude.rozkaz(polecenie, gra));
+            } catch (RuntimeException e) {
+                rozkazy.add("nie rozumiem polecenia: " + polecenie);
+            }
+        }
+        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        StringBuilder wynik = new StringBuilder();
+        if (rozkazy.isEmpty()) {
+            wiersze.add(new Dialog.Wiersz("Bez rozkazów: dzień idzie tak, jak jest.", Paleta.TEKST));
+            wynik.append("bez rozkazów\n");
+        }
+        for (Object pozycja : rozkazy) {
+            String tekst;
+            int kolor;
+            if (pozycja instanceof Rozkaz rozkaz) {
+                String powod = gra.powodOdmowy(rozkaz);
+                if (powod == null) {
+                    int koszt = gra.koszt(rozkaz);
+                    gra.wykonajRozkaz(rozkaz);
+                    tekst = "Wykonano: " + rozkaz.nazwa() + (koszt > 0 ? " (koszt " + koszt + ")" : "");
+                    kolor = Paleta.ZIELEN;
+                } else {
+                    tekst = "Odrzucono: " + rozkaz.nazwa() + " (" + powod.toLowerCase() + ")";
+                    kolor = Paleta.CZERWIEN;
+                }
+            } else {
+                tekst = "Odrzucono: " + pozycja;
+                kolor = Paleta.CZERWIEN;
+            }
+            wiersze.add(new Dialog.Wiersz(tekst, kolor));
+            wynik.append(tekst).append('\n');
+        }
+        if (!decyzja.powod().isBlank()) {
+            wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+            wiersze.add(new Dialog.Wiersz("Dlaczego: " + jednaLinia(decyzja.powod()), Paleta.TEKST_SLABY));
+            gra.zanotuj("Claude: " + jednaLinia(decyzja.powod()));
+        }
+        most.zapiszHistorie(wynik.toString());
+        zapisz();
+        dialog = new Dialog(wiersze, "Decyzje Claude'a · dzień " + gra.getNumerDnia(),
+                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i rozpocznij dzień, kiedy chcesz.", true,
+                        this::zamknijDialog)),
+                this::zamknijDialog);
+    }
+
+    private static String jednaLinia(String tekst) {
+        return tekst.strip().replaceAll("\\s+", " ");
+    }
+
+    private void bladClaude(String opis) {
+        dialog = new Dialog("Claude", List.of(opis),
+                List.of(new Dialog.Opcja("Poproś jeszcze raz", "Zapisz stan od nowa i czekaj na nową odpowiedź.", true,
+                                () -> {
+                                    dialog = null;
+                                    if (gra != null && gra.getDzien() == null) {
+                                        poprosClaudeOStart();
+                                    } else {
+                                        poprosClaudeOPoranek();
+                                    }
+                                }),
+                        new Dialog.Opcja("Graj sam", "Wyłącz Claude'a.", true, () -> {
+                            dialog = null;
+                            claudeGra = false;
+                            czekamNa = null;
+                            if (gra != null && gra.getDzien() == null) {
+                                wybierzMinistraFinansow();
+                            }
+                        })),
+                null);
     }
 
     /** Wczytuje ostatnio zapisaną rozgrywkę w toku. */
@@ -973,6 +1161,7 @@ public final class Aplikacja {
         dialog = null;
         gra = null;
         slot = 0;
+        czekamNa = null;
         tryb = Tryb.MENU;
     }
 
@@ -1151,6 +1340,7 @@ public final class Aplikacja {
         przewiniecie = 0;
         zapisz();
         radaPoranna();
+        poprosClaudeOPoranek();
     }
 
     // ================= okna rozkazów =================
