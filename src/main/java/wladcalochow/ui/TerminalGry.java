@@ -40,7 +40,7 @@ final class TerminalGry implements Konsola {
     }
 
     private static boolean wykryjPelnyKolor() {
-        String wymuszone = System.getenv("WLADCA_KOLORY");
+        String wymuszone = System.getProperty("wladca.kolory", System.getenv("WLADCA_KOLORY"));
         if (wymuszone != null) {
             return !wymuszone.trim().equals("256");
         }
