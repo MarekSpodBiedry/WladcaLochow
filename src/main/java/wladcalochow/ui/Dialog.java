@@ -5,10 +5,12 @@ import java.util.List;
 
 /**
  * Okno wyboru na środku ekranu. Opcje wybiera się strzałkami i Enterem, cyfrą albo kliknięciem.
+ * Tekst nigdy nie jest ucinany: długie akapity i opisy opcji zawijają się do kolejnych wierszy,
+ * a gdy opcji jest więcej, niż mieści ekran, lista się przewija.
  */
 final class Dialog {
 
-    /** Opcja w oknie: etykieta, drugi wiersz ze szczegółami i akcja po wybraniu. */
+    /** Opcja w oknie: etykieta, opis pod nią i akcja po wybraniu. */
     record Opcja(String etykieta, String szczegol, boolean aktywna, Runnable akcja) {
     }
 
@@ -21,7 +23,8 @@ final class Dialog {
         void dodaj(int x, int y, int w, int h, Runnable akcja);
     }
 
-    private static final int MAKS_SZER = 78;
+    private static final int SZEROKOSC = 78;
+    private static final int MARGINES_EKRANU = 6;
 
     private final String tytul;
     private final List<Wiersz> wstep;
@@ -49,69 +52,139 @@ final class Dialog {
         }
     }
 
-    void rysuj(Ekran e, Strefy strefy) {
-        int w = Math.min(MAKS_SZER, e.szer - 6);
-        int wnetrze = w - 4;
-        List<Wiersz> wiersze = new ArrayList<>();
-        for (Wiersz akapit : wstep) {
-            for (String linia : Ekran.zawin(akapit.tekst(), wnetrze)) {
-                wiersze.add(new Wiersz(linia, akapit.kolor()));
+    /** Rozłożenie treści okna dla konkretnej szerokości. */
+    private final class Uklad {
+        final int w;
+        final List<Wiersz> wiersze = new ArrayList<>();
+        final List<List<String>> etykiety = new ArrayList<>();
+        final List<List<String>> szczegoly = new ArrayList<>();
+
+        Uklad(int w) {
+            this.w = w;
+            for (Wiersz akapit : wstep) {
+                for (String linia : Ekran.zawin(akapit.tekst(), w - 4)) {
+                    wiersze.add(new Wiersz(linia, akapit.kolor()));
+                }
+            }
+            for (Opcja opcja : opcje) {
+                etykiety.add(Ekran.zawin(opcja.etykieta(), w - 9));
+                szczegoly.add(opcja.szczegol().isEmpty() ? List.of() : Ekran.zawin(opcja.szczegol(), w - 9));
             }
         }
-        int stale = 2 + wiersze.size() + (wiersze.isEmpty() ? 0 : 1) + 2;
-        widoczne = Math.max(1, Math.min(opcje.size(), (e.wys - 2 - stale) / 2));
-        if (wybrana < pierwsza) {
-            pierwsza = wybrana;
-        } else if (wybrana >= pierwsza + widoczne) {
-            pierwsza = wybrana - widoczne + 1;
+
+        int wysokoscOpcji(int i) {
+            return etykiety.get(i).size() + szczegoly.get(i).size();
         }
-        int h = stale + 2 * widoczne;
+
+        /** Wiersze poza opcjami: ramka, wstęp, odstępy i podpowiedź. */
+        int stale() {
+            return 2 + wiersze.size() + (wiersze.isEmpty() ? 0 : 1) + 2;
+        }
+
+        int calosc() {
+            int suma = stale();
+            for (int i = 0; i < opcje.size(); i++) {
+                suma += wysokoscOpcji(i);
+            }
+            return suma;
+        }
+    }
+
+    void rysuj(Ekran e, Strefy strefy) {
+        // Najpierw zwykła szerokość; gdy treść nie mieści się w pionie, okno się poszerza.
+        Uklad uklad = new Uklad(Math.min(SZEROKOSC, e.szer - MARGINES_EKRANU));
+        if (uklad.calosc() > e.wys && e.szer - MARGINES_EKRANU > uklad.w) {
+            uklad = new Uklad(e.szer - MARGINES_EKRANU);
+        }
+        int w = uklad.w;
+        int naOpcje = Math.max(1, e.wys - uklad.stale());
+
+        // Okno przewijania: zaznaczona opcja musi być w całości widoczna.
+        pierwsza = Math.min(pierwsza, wybrana);
+        while (true) {
+            int zajete = 0;
+            int ile = 0;
+            for (int i = pierwsza; i < opcje.size() && zajete + uklad.wysokoscOpcji(i) <= naOpcje; i++) {
+                zajete += uklad.wysokoscOpcji(i);
+                ile++;
+            }
+            widoczne = Math.max(1, ile);
+            if (wybrana < pierwsza + widoczne || pierwsza >= wybrana) {
+                break;
+            }
+            pierwsza++;
+        }
+        int wysOpcji = 0;
+        for (int i = pierwsza; i < pierwsza + widoczne; i++) {
+            wysOpcji += uklad.wysokoscOpcji(i);
+        }
+        int h = uklad.stale() + wysOpcji;
         int x = (e.szer - w) / 2;
         int y = Math.max(0, (e.wys - h) / 2);
 
         e.ramka(x, y, w, h, Paleta.ZLOTO, Paleta.PANEL, tytul, Paleta.ZLOTO);
         int wiersz = y + 1;
-        for (Wiersz linia : wiersze) {
+        for (Wiersz linia : uklad.wiersze) {
             e.pisz(x + 2, wiersz++, linia.tekst(), linia.kolor());
         }
-        if (!wiersze.isEmpty()) {
+        if (!uklad.wiersze.isEmpty()) {
             wiersz++;
         }
+        int poczatekOpcji = wiersz;
         for (int i = pierwsza; i < pierwsza + widoczne; i++) {
             Opcja opcja = opcje.get(i);
             boolean zaznaczona = i == wybrana;
-            int tlo = zaznaczona ? Paleta.PANEL_JASNY : Paleta.PANEL;
-            e.wypelnij(x + 1, wiersz, w - 2, 2, tlo);
+            int wysokosc = uklad.wysokoscOpcji(i);
+            e.wypelnij(x + 1, wiersz, w - 2, wysokosc, zaznaczona ? Paleta.PANEL_JASNY : Paleta.PANEL);
+            e.pisz(x + 2, wiersz, zaznaczona ? "▶" : " ", Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
             int numer = i - pierwsza + 1;
-            String znacznik = zaznaczona ? "▶" : " ";
-            e.pisz(x + 2, wiersz, znacznik, Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
             if (numer <= 9) {
                 e.pisz(x + 4, wiersz, String.valueOf(numer), opcja.aktywna() ? Paleta.ZLOTO : Paleta.TEKST_SLABY,
                         Ekran.BEZ_ZMIAN, true);
             }
-            e.pisz(x + 6, wiersz, Ekran.przytnij(opcja.etykieta(), w - 9),
-                    opcja.aktywna() ? Paleta.TEKST : Paleta.TEKST_SLABY, Ekran.BEZ_ZMIAN, opcja.aktywna());
-            e.pisz(x + 6, wiersz + 1, Ekran.przytnij(opcja.szczegol(), w - 9), Paleta.TEKST_SLABY);
+            int linia = wiersz;
+            for (String tekst : uklad.etykiety.get(i)) {
+                e.pisz(x + 6, linia++, tekst, opcja.aktywna() ? Paleta.TEKST : Paleta.TEKST_SLABY,
+                        Ekran.BEZ_ZMIAN, opcja.aktywna());
+            }
+            for (String tekst : uklad.szczegoly.get(i)) {
+                e.pisz(x + 6, linia++, tekst, Paleta.TEKST_SLABY);
+            }
             int indeks = i;
-            strefy.dodaj(x + 1, wiersz, w - 2, 2, () -> wybierz(indeks));
-            wiersz += 2;
+            strefy.dodaj(x + 1, wiersz, w - 2, wysokosc, () -> wybierz(indeks));
+            wiersz += wysokosc;
         }
         if (pierwsza > 0) {
-            e.pisz(x + w - 4, y + stale - 2, "▲", Paleta.TEKST_SLABY);
+            e.pisz(x + w - 3, poczatekOpcji, "▲", Paleta.ZLOTO);
         }
         if (pierwsza + widoczne < opcje.size()) {
-            e.pisz(x + w - 4, wiersz - 1, "▼", Paleta.TEKST_SLABY);
+            e.pisz(x + w - 3, wiersz - 1, "▼", Paleta.ZLOTO);
         }
-        String podpowiedz = anuluj == null
-                ? "↑↓ wybór · Enter zatwierdza · można kliknąć"
-                : "↑↓ wybór · Enter zatwierdza · Esc zamyka · można kliknąć";
-        e.pisz(x + 2, y + h - 2, Ekran.przytnij(podpowiedz, wnetrze), Paleta.TEKST_SLABY);
+        e.pisz(x + 2, y + h - 2, podpowiedz(w - 4), Paleta.TEKST_SLABY);
         if (anuluj != null) {
             String zamknij = " Esc ✕ ";
             int zx = x + w - Ekran.szerokosc(zamknij) - 2;
             e.pisz(zx, y, zamknij, Paleta.TEKST_CIEMNY, Paleta.ZLOTO, true);
             strefy.dodaj(zx, y, Ekran.szerokosc(zamknij), 1, anuluj);
         }
+    }
+
+    /** Najdłuższa podpowiedź, która mieści się w oknie. */
+    private String podpowiedz(int szerokosc) {
+        boolean przewijanie = widoczne < opcje.size();
+        String[] warianty = anuluj == null
+                ? new String[] {"↑↓ wybór · Enter zatwierdza · można kliknąć", "↑↓ · Enter"}
+                : przewijanie
+                ? new String[] {"↑↓ wybór i przewijanie · Enter zatwierdza · Esc zamyka · można kliknąć",
+                    "↑↓ wybór · Enter zatwierdza · Esc zamyka", "↑↓ · Enter · Esc"}
+                : new String[] {"↑↓ wybór · Enter zatwierdza · Esc zamyka · można kliknąć",
+                    "↑↓ wybór · Enter zatwierdza · Esc zamyka", "↑↓ · Enter · Esc"};
+        for (String wariant : warianty) {
+            if (Ekran.szerokosc(wariant) <= szerokosc) {
+                return wariant;
+            }
+        }
+        return "";
     }
 
     void obsluz(Wejscie wejscie) {

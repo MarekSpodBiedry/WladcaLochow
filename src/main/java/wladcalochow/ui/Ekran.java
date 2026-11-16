@@ -19,6 +19,7 @@ final class Ekran {
     private final int[] kolor;
     private final int[] tlo;
     private final boolean[] gruby;
+    private int pozaEkranem;
     private int ox0;
     private int oy0;
     private int ox1;
@@ -50,6 +51,27 @@ final class Ekran {
         oy0 = 0;
         ox1 = szer;
         oy1 = wys;
+    }
+
+    private boolean calyEkran() {
+        return ox0 == 0 && oy0 == 0 && ox1 == szer && oy1 == wys;
+    }
+
+    /** Ile znaków próbowano narysować poza ekranem (poza celowo przycinaną scenerią). */
+    int pozaEkranem() {
+        return pozaEkranem;
+    }
+
+    /** Zawartość ekranu jako zwykły tekst, wiersz po wierszu (do testów układu). */
+    String tekst() {
+        StringBuilder sb = new StringBuilder();
+        for (int y = 0; y < wys; y++) {
+            for (int x = 0; x < szer; x++) {
+                sb.append(glif[y * szer + x]);
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
     }
 
     private boolean widac(int x, int y) {
@@ -92,6 +114,10 @@ final class Ekran {
             int w = szerokoscZnaku(cp);
             if (w == 0) {
                 continue;
+            }
+            if (calyEkran() && !g.toString().isBlank()
+                    && (x < 0 || x + w > szer || y < 0 || y >= wys)) {
+                pozaEkranem++;
             }
             if (widac(x, y) && (w == 1 || widac(x + 1, y))) {
                 komorka(x, y, g.toString(), kolorZnaku, kolorTla, pogrubiony);

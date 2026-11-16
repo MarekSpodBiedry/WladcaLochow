@@ -196,7 +196,7 @@ public class Gra implements Serializable {
                 yield r.ulepszenie().nazwa() + " ma teraz poziom " + loch.poziom(r.ulepszenie());
             }
         };
-        String cena = koszt > 0 ? " (koszt " + koszt + " złota)" : "";
+        String cena = koszt > 0 ? ". Koszt: " + koszt + " złota" : "";
         Zdarzenie zdarzenie = new Informacja("Rozkaz: " + skutek + cena + ".", Ton.NEUTRALNY);
         loguj(zdarzenie);
         return zdarzenie;

@@ -58,7 +58,7 @@ public final class Aplikacja {
     private static final String AKCENT_TYTULU =
         "                                                                ▄▀         ";
 
-    private final TerminalGry terminal;
+    private final Konsola terminal;
     private final Path plikZapisu;
     private final Long ziarnoStartowe;
     private final List<Strefa> strefy = new ArrayList<>();
@@ -78,7 +78,11 @@ public final class Aplikacja {
     private boolean radaWalkiPokazana;
 
     public Aplikacja(Path plikZapisu, Long ziarnoStartowe) throws IOException {
-        this.terminal = new TerminalGry();
+        this(new TerminalGry(), plikZapisu, ziarnoStartowe);
+    }
+
+    Aplikacja(Konsola terminal, Path plikZapisu, Long ziarnoStartowe) {
+        this.terminal = terminal;
         this.plikZapisu = plikZapisu;
         this.ziarnoStartowe = ziarnoStartowe;
     }
@@ -96,7 +100,7 @@ public final class Aplikacja {
                         }
                     }
                     case Wejscie.Koniec k -> {
-                        zapisz();
+                        zapiszPrzyWyjsciu();
                         koniec = true;
                     }
                     default -> obsluz(wejscie);
@@ -109,7 +113,44 @@ public final class Aplikacja {
 
     // ================= wejście =================
 
-    private void obsluz(Wejscie wejscie) {
+    // ---- dostęp dla testów układu ekranu ----
+
+    /** Pokazuje podany stan gry tak, jakby został właśnie wczytany (poranek). */
+    void pokazGre(Gra stan) {
+        gra = stan;
+        tryb = Tryb.PORANEK;
+        dialog = null;
+        aktor = null;
+        cel = null;
+        przewiniecie = 0;
+    }
+
+    Gra gra() {
+        return gra;
+    }
+
+    Ekran klatka() {
+        return poprzedni;
+    }
+
+    boolean czyKoniec() {
+        return koniec;
+    }
+
+    boolean czyDialog() {
+        return dialog != null;
+    }
+
+    List<Character> dostepneSkroty() {
+        return new ArrayList<>(skroty.keySet());
+    }
+
+    /** Prostokąty stref klikalnych bieżącej klatki: x, y, szerokość, wysokość. */
+    List<int[]> prostokatyStref() {
+        return strefy.stream().map(s -> new int[] {s.x(), s.y(), s.w(), s.h()}).toList();
+    }
+
+    void obsluz(Wejscie wejscie) {
         if (wejscie instanceof Wejscie.Klik klik) {
             for (int i = strefy.size() - 1; i >= 0; i--) {
                 if (strefy.get(i).zawiera(klik.x(), klik.y())) {
@@ -154,7 +195,7 @@ public final class Aplikacja {
 
     // ================= rysowanie =================
 
-    private void rysuj() {
+    void rysuj() {
         int szer = terminal.szer();
         int wys = terminal.wys();
         Ekran e = new Ekran(Math.max(1, szer), Math.max(1, wys), Paleta.TLO);
@@ -328,7 +369,8 @@ public final class Aplikacja {
         Loch loch = gra.getLoch();
         if (walka != null) {
             List<Bohater> bohaterowie = walka.getBohaterowie();
-            int wysBohaterow = Math.min(bohaterowie.size(), Math.max(3, h / 2 - 2)) + 2;
+            int dlaObroncow = obroncyWalki(walka).size() + 2;
+            int wysBohaterow = Math.max(3, Math.min(bohaterowie.size() + 2, h - dlaObroncow));
             e.ramka(x, y, w, wysBohaterow, Paleta.RAMKA, Paleta.PANEL,
                     "Bohaterowie", Paleta.CZERWIEN);
             listaIstot(e, x + 1, y + 1, w - 2, wysBohaterow - 2, bohaterowie, walka);
@@ -341,33 +383,34 @@ public final class Aplikacja {
             return;
         }
 
+        // Jedna ramka na ministrów i ustawienia lochu: 10 wierszy, każdy tekst ma swoje miejsce.
         MinisterFinansow finansow = loch.getMinisterFinansow();
         MinisterPracy pracy = loch.getMinisterPracy();
-        e.ramka(x, y, w, 8, Paleta.RAMKA, Paleta.PANEL, "Ministrowie", Paleta.ZLOTO);
+        e.ramka(x, y, w, 12, Paleta.RAMKA, Paleta.PANEL, "Ministrowie i loch", Paleta.ZLOTO);
         int tx = x + 2;
         int tw = w - 4;
-        e.pisz(tx, y + 1, Sprite.FINANSE + " " + Ekran.przytnij(finansow.getImie(), tw - 3), Paleta.TEKST,
-                Ekran.BEZ_ZMIAN, true);
-        e.pisz(tx + 3, y + 2, Ekran.przytnij("Finanse · " + finansow.nazwaRodzaju() + " · pensja "
-                + finansow.getPensja(), tw - 3), Paleta.TEKST_SLABY);
-        String nastepcaFinansow = gra.getNastepnyMinisterFinansow() == null ? ""
-                : " · jutro: " + gra.getNastepnyMinisterFinansow().getImie();
-        e.pisz(tx + 3, y + 3, Ekran.przytnij("negocjacje -" + procent(finansow.getNegocjacje()) + "%"
-                + nastepcaFinansow, tw - 3), Paleta.TEKST_SLABY);
-        e.pisz(tx, y + 4, Sprite.KADRY + " " + Ekran.przytnij(pracy.getImie(), tw - 3), Paleta.TEKST,
-                Ekran.BEZ_ZMIAN, true);
-        e.pisz(tx + 3, y + 5, Ekran.przytnij("Kadry · " + pracy.nazwaRodzaju() + " · pensja " + pracy.getPensja(),
-                tw - 3), Paleta.TEKST_SLABY);
-        String nastepcaPracy = gra.getNastepnyMinisterPracy() == null ? ""
-                : " · jutro: " + gra.getNastepnyMinisterPracy().getImie();
-        e.pisz(tx + 3, y + 6, Ekran.przytnij("werbunek +" + pracy.getWerbunek() + " · kopalnia +"
-                + procent(pracy.getNadzorKopalni()) + "%" + nastepcaPracy, tw - 3), Paleta.TEKST_SLABY);
-
-        e.ramka(x, y + 8, w, 4, Paleta.RAMKA, Paleta.PANEL, "Loch", Paleta.TURKUS);
-        int lx = e.pisz(tx, y + 9, "Rekrutacja do " + loch.getLimitRekrutacji() + "%", Paleta.TEKST);
-        if (loch.getWydobycieDoOdebrania() > 0) {
-            e.pisz(lx, y + 9, " · kopalnia jutro +" + loch.getWydobycieDoOdebrania(), Paleta.TURKUS);
+        linia(e, tx, y + 1, tw, Sprite.FINANSE + " Finanse: " + finansow.getImie(), Paleta.TEKST, true);
+        linia(e, tx + 3, y + 2, tw - 3, finansow.nazwaRodzaju() + ", pensja " + finansow.getPensja()
+                + ", zniżki " + procent(finansow.getNegocjacje()) + "%", Paleta.TEKST_SLABY, false);
+        if (gra.getNastepnyMinisterFinansow() != null) {
+            linia(e, tx + 3, y + 3, tw - 3, "od jutra: " + gra.getNastepnyMinisterFinansow().getImie(),
+                    Paleta.POMARANCZ, false);
         }
+        linia(e, tx, y + 4, tw, Sprite.KADRY + " Kadry: " + pracy.getImie(), Paleta.TEKST, true);
+        linia(e, tx + 3, y + 5, tw - 3, pracy.nazwaRodzaju() + ", pensja " + pracy.getPensja(),
+                Paleta.TEKST_SLABY, false);
+        linia(e, tx + 3, y + 6, tw - 3, "werbunek +" + pracy.getWerbunek() + ", kopalnia +"
+                + procent(pracy.getNadzorKopalni()) + "%", Paleta.TEKST_SLABY, false);
+        if (gra.getNastepnyMinisterPracy() != null) {
+            linia(e, tx + 3, y + 7, tw - 3, "od jutra: " + gra.getNastepnyMinisterPracy().getImie(),
+                    Paleta.POMARANCZ, false);
+        }
+        if (loch.getWydobycieDoOdebrania() > 0) {
+            linia(e, tx, y + 8, tw, "Z kopalni jutro rano: +" + loch.getWydobycieDoOdebrania() + " złota",
+                    Paleta.TURKUS, false);
+        }
+        linia(e, tx, y + 9, tw, "Limit rekrutacji: " + loch.getLimitRekrutacji() + "% skarbca", Paleta.TEKST,
+                false);
         int ux = tx;
         for (Ulepszenie ulepszenie : Ulepszenie.values()) {
             ux = e.pisz(ux, y + 10, skrotUlepszenia(ulepszenie) + " ", Paleta.TEKST_SLABY);
@@ -389,6 +432,11 @@ public final class Aplikacja {
     private static void legenda(Ekran e, int x, int y, int w, String tekst) {
         String opis = " " + tekst + " ";
         e.pisz(x + w - Ekran.szerokosc(opis) - 2, y, opis, Paleta.TEKST_SLABY);
+    }
+
+    /** Jeden wiersz panelu. Gdyby tekst się nie zmieścił, dostanie wielokropek, który wyłapują testy układu. */
+    private static void linia(Ekran e, int x, int y, int maks, String tekst, int kolor, boolean pogrubiony) {
+        e.pisz(x, y, Ekran.przytnij(tekst, maks), kolor, Ekran.BEZ_ZMIAN, pogrubiony);
     }
 
     private static String skrotUlepszenia(Ulepszenie ulepszenie) {
@@ -730,15 +778,24 @@ public final class Aplikacja {
         }
     }
 
-    private void wyjdzDoMenu() {
+    /** Zapis jest zawsze poranny. Wieczorem najpierw zaczynamy kolejny dzień, żeby nic nie przepadło. */
+    private void zapiszPrzyWyjsciu() {
+        if (gra != null && tryb == Tryb.WIECZOR && !gra.czyKoniecGry()) {
+            gra.rozpocznijDzien();
+            tryb = Tryb.PORANEK;
+        }
         zapisz();
+    }
+
+    private void wyjdzDoMenu() {
+        zapiszPrzyWyjsciu();
         dialog = null;
         gra = null;
         tryb = Tryb.MENU;
     }
 
     private void wyjdzZGry() {
-        zapisz();
+        zapiszPrzyWyjsciu();
         koniec = true;
     }
 
@@ -867,14 +924,16 @@ public final class Aplikacja {
                 || bilans.getObrona() == BilansDnia.Obrona.BEZ_OBRONCOW;
         wiersze.add(new Dialog.Wiersz(obrona, porazka ? Paleta.CZERWIEN : Paleta.TEKST));
 
-        List<String> zaloga = new ArrayList<>();
-        lista(zaloga, "zatrudnieni", bilans.getZatrudnieni());
-        lista(zaloga, "polegli", bilans.getPolegli());
-        lista(zaloga, "odeszli", bilans.getOdeszli());
-        lista(zaloga, "bez żołdu", bilans.getNieoplaceni());
-        lista(zaloga, "awans", bilans.getAwanse());
+        boolean zmiany = !bilans.getZatrudnieni().isEmpty() || !bilans.getPolegli().isEmpty()
+                || !bilans.getOdeszli().isEmpty() || !bilans.getNieoplaceni().isEmpty()
+                || !bilans.getAwanse().isEmpty();
         wiersze.add(new Dialog.Wiersz("Załoga: " + loch.getListaPotworow().size() + " z " + Loch.POJEMNOSC
-                + (zaloga.isEmpty() ? ", bez zmian." : ". " + String.join(". ", zaloga) + "."), Paleta.TEKST));
+                + (zmiany ? "" : ", bez zmian"), Paleta.TEKST));
+        lista(wiersze, "Zatrudnieni", bilans.getZatrudnieni(), Paleta.ZIELEN);
+        lista(wiersze, "Awans", bilans.getAwanse(), Paleta.ZIELEN);
+        lista(wiersze, "Polegli", bilans.getPolegli(), Paleta.CZERWIEN);
+        lista(wiersze, "Zabrakło żołdu dla", bilans.getNieoplaceni(), Paleta.CZERWIEN);
+        lista(wiersze, "Odeszli z lochu", bilans.getOdeszli(), Paleta.CZERWIEN);
         if (bilans.getWydobycieNaJutro() > 0) {
             wiersze.add(new Dialog.Wiersz("Jutro rano z kopalni: +" + bilans.getWydobycieNaJutro() + " złota.",
                     Paleta.TURKUS));
@@ -895,9 +954,9 @@ public final class Aplikacja {
         }
     }
 
-    private static void lista(List<String> czesci, String nazwa, List<String> imiona) {
+    private static void lista(List<Dialog.Wiersz> wiersze, String nazwa, List<String> imiona, int kolor) {
         if (!imiona.isEmpty()) {
-            czesci.add(Character.toUpperCase(nazwa.charAt(0)) + nazwa.substring(1) + ": " + String.join(", ", imiona));
+            wiersze.add(new Dialog.Wiersz("  " + nazwa + ": " + String.join(", ", imiona), kolor));
         }
     }
 

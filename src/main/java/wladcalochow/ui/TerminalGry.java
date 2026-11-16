@@ -11,7 +11,7 @@ import org.jline.utils.NonBlockingReader;
  * Cienka warstwa nad JLine: tryb surowy, ekran alternatywny, odczyt klawiszy i kliknięć.
  * Myszka zgłasza tylko naciśnięcia przycisków (tryb 1000), więc sam ruch kursora niczego nie wysyła.
  */
-final class TerminalGry implements AutoCloseable {
+final class TerminalGry implements Konsola {
 
     private static final String WLACZ = "\u001b[?1049h\u001b[?25l\u001b[?1000h\u001b[?1006h\u001b[2J";
     private static final String WYLACZ = "\u001b[?1006l\u001b[?1000l\u001b[0m\u001b[?25h\u001b[?1049l";
@@ -55,25 +55,30 @@ final class TerminalGry implements AutoCloseable {
                 || program.equals("ghostty") || program.equals("WarpTerminal");
     }
 
-    boolean pelnyKolor() {
+    @Override
+    public boolean pelnyKolor() {
         return pelnyKolor;
     }
 
-    int szer() {
+    @Override
+    public int szer() {
         return terminal.getSize().getColumns();
     }
 
-    int wys() {
+    @Override
+    public int wys() {
         return terminal.getSize().getRows();
     }
 
-    void wypisz(String tekst) {
+    @Override
+    public void wypisz(String tekst) {
         terminal.writer().print(tekst);
         terminal.writer().flush();
     }
 
     /** Czeka najwyżej podany czas na jedno zdarzenie wejścia. */
-    Wejscie czytaj(long milisekundy) throws IOException {
+    @Override
+    public Wejscie czytaj(long milisekundy) throws IOException {
         if (przerwano) {
             return new Wejscie.Koniec();
         }
