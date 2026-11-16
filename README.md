@@ -1,14 +1,60 @@
 # Władca Lochów
 
-Terminalowa gra strategiczna w Javie. Jesteś Władcą Podziemnych Lochów: zatrudniasz potwory,
-kopiesz złoto i bronisz skarbca przed bohaterami. Nie sterujesz potworami w walce, tylko decydujesz,
-kto rządzi lochem i jaką prowadzi politykę.
+**W zwykłych grach jesteś bohaterem, który schodzi do lochu po skarb. Tutaj jest odwrotnie:
+loch jest Twój, skarb jest Twój, a bohaterowie to włamywacze.**
 
 ![Poranek w lochu](docs/podglad-poranek.png)
 
 ![Walka pod bramą lochu](docs/podglad-walka.png)
 
 Obrazki to podgląd wyrenderowany poza terminalem; dokładny wygląd zależy od czcionki terminala.
+
+## O co chodzi
+
+Jesteś Władcą Lochów. Pod ziemią masz skarbiec pełen złota i gromadę potworów na żołdzie:
+tchórzliwe gobliny z procami, twarde orki i ogry, które idą przez walkę jak czołg. Na powierzchni
+krążą rycerze, łucznicy i złodzieje, którzy słyszeli o Twoim złocie. Im więcej go masz, tym chętniej
+przychodzą.
+
+Nie machasz mieczem i nie przesuwasz potworów po planszy. Ty rządzisz. Rano podejmujesz jedną albo
+dwie decyzje, a potem patrzysz, jak dzień rozgrywa się sam.
+
+Gra działa w terminalu, ale nie wygląda jak ściana tekstu: jest kolorowa sceneria, postacie, paski
+życia i przyciski, które można klikać myszką.
+
+## Jak wygląda jeden dzień
+
+1. **Rano decydujesz.** Zwiad melduje, ilu bohaterów się zbliża. Kupić pułapki? Dać premię
+   potworowi, któremu puszczają nerwy? Wymienić ministra? A może po prostu zapłacić bohaterom,
+   żeby sobie poszli?
+2. **Loch pracuje.** Wpływa złoto. Twoi ministrowie zatrudniają nowe potwory i wysyłają co
+   trzeciego do kopalni.
+3. **Bohaterowie atakują.** Potwory stają pod bramą. Walkę oglądasz ruch po ruchu albo przewijasz
+   do końca.
+4. **Wieczorem płacisz.** Każdy wojownik chce żołdu. Kto go nie dostanie, traci morale, a w końcu
+   pakuje się i odchodzi. Na koniec dostajesz rachunek: ile złota przyszło, na co poszło i kto
+   nie dożył wieczora.
+
+Jeden dzień to kilka naciśnięć klawiszy.
+
+## Dlaczego warto spróbować
+
+- **Chciwość kontra bezpieczeństwo.** Złota potrzebujesz na żołd i ulepszenia, ale pełny skarbiec
+  ściąga coraz groźniejszych gości. Ile odważysz się trzymać?
+- **Ministrowie z charakterem.** Jeden chomikuje złoto na czarną godzinę, drugi wydaje wszystko
+  od ręki. Jeden zatrudnia tylko najsilniejszych, drugi bierze, kto się nawinie. To Ty wybierasz,
+  komu oddać loch.
+- **Potwory mają imiona.** Zgrzyt, Purchawka i Rozpruwacz to nie liczby. Kto przeżyje walkę, staje
+  się weteranem: bije mocniej, ale chce więcej złota. Strata takiego boli.
+- **Nie da się wygrać, da się tylko przetrwać dłużej.** Bohaterowie z każdym dniem są silniejsi.
+  Trzy przegrane obrony z rzędu i loch upada. Ile dni wytrzymasz?
+- **Każda rozgrywka jest inna.** Inni kandydaci, inni bohaterowie, inne kłopoty.
+
+## Nie musisz nic umieć
+
+Wybierz nową grę **z samouczkiem**. Pierwszego dnia tylko patrzysz. Przez kolejne cztery dni doradca
+odsłania po jednej możliwości i tłumaczy, co się właśnie stało. Pierwszy przeciwnik to jeden
+niedoświadczony rycerz, z którym Twoje potwory poradzą sobie same.
 
 ## Uruchomienie
 
