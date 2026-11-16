@@ -56,7 +56,25 @@ Wybierz nową grę **z samouczkiem**. Pierwszego dnia tylko patrzysz. Przez kole
 odsłania po jednej możliwości i tłumaczy, co się właśnie stało. Pierwszy przeciwnik to jeden
 niedoświadczony rycerz, z którym Twoje potwory poradzą sobie same.
 
-## Uruchomienie
+## Pobierz i graj
+
+1. Zainstaluj Javę 21 lub nowszą.
+2. Pobierz [wladca-lochow.jar](https://github.com/MarekSpodBiedry/WladcaLochow/releases/latest/download/wladca-lochow.jar)
+   (wszystkie wersje są na stronie [wydań](https://github.com/MarekSpodBiedry/WladcaLochow/releases)).
+3. Kliknij plik dwukrotnie. Gra sama otworzy okno terminala i w nim wystartuje.
+
+Jeśli dwuklik nie działa (zależy to od tego, czy system kojarzy pliki `.jar` z Javą), otwórz
+terminal w folderze z plikiem i wpisz:
+
+```bash
+java -jar wladca-lochow.jar
+```
+
+Gra szuka terminala w tej kolejności: Windows Terminal lub zwykła konsola na Windows, Terminal
+na macOS, a na Linuksie między innymi GNOME Terminal, Konsole, kitty, Alacritty i xterm.
+Jeśli żadnego nie znajdzie, pokaże polecenie do wpisania ręcznie.
+
+## Budowanie ze źródeł
 
 Wymagania: Java 21 lub nowsza i Maven.
 
@@ -78,7 +96,8 @@ Opcje:
 |---|---|
 | `--ziarno LICZBA` | powtarzalna rozgrywka: to samo ziarno i te same decyzje dają ten sam przebieg |
 | `--zapis PLIK` | inne miejsce zapisu gry (domyślnie `~/.wladcalochow/zapis.dat`) |
-| zmienna `WLADCA_KOLORY=256` lub `=24` | wymuszenie trybu kolorów |
+| `--kolory 24` lub `--kolory 256` | wymuszenie trybu kolorów (to samo robi zmienna `WLADCA_KOLORY`) |
+| `--bez-okna` | nie otwieraj nowego okna terminala, nawet gdy gra została uruchomiona bez niego |
 
 ## Sterowanie
 
@@ -141,6 +160,13 @@ Szczegółowy opis istot, ministrów i walki: [docs/Opis_gry.docx](docs/Opis_gry
 
 Model nie zna terminala: zwraca zdarzenia, a interfejs je tylko pokazuje. Istoty są unikatowe
 i nigdy nie są kopiowane.
+
+## Wydawanie nowej wersji
+
+Wydanie buduje się samo w GitHub Actions (workflow „Wydanie”): wystarczy zmienić numer
+`<version>` w `pom.xml` na głównej gałęzi. Workflow uruchamia testy, buduje `wladca-lochow.jar`
+i publikuje go jako wydanie `v<numer>`. Gdy wydanie o tym numerze już istnieje, nic się nie dzieje.
+Można też uruchomić workflow ręcznie w zakładce Actions.
 
 ## Testy
 
