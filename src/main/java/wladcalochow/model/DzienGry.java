@@ -34,6 +34,7 @@ public class DzienGry implements Serializable {
     private int limitRozkazow = ROZKAZY_NA_DZIEN;
     private int pozostaleRozkazy = ROZKAZY_NA_DZIEN;
     private Faza faza = Faza.PORANEK;
+    private boolean przychodPrzyjety;
     private Walka walka;
 
     public DzienGry(int numer, int dochodBazowy, List<Potwor> kandydaci, List<Bohater> bohaterowie,
@@ -51,16 +52,26 @@ public class DzienGry implements Serializable {
 
     // ---- faza 1 i 2: przypływ złota, pensje ministrów, rekrutacja, przydział do kopalni ----
 
+    /**
+     * Przypływ złota: dochód lochu i urobek z wczorajszej kopalni. Dzieje się na samym początku dnia,
+     * jeszcze przed rozkazami Władcy, żeby rano dało się wydać to, co właśnie wpłynęło.
+     */
+    public List<Zdarzenie> przyjmijPrzychod(Loch loch) {
+        wymagaj(Faza.PORANEK);
+        if (przychodPrzyjety) {
+            return List.of();
+        }
+        przychodPrzyjety = true;
+        int wydobycie = loch.odbierzWydobycie();
+        loch.getSkarbiec().wplac(dochodBazowy + wydobycie);
+        bilans.przychod(dochodBazowy, wydobycie);
+        return List.of(new Informacja("Przypływ złota: +" + (dochodBazowy + wydobycie)
+                + " (dochód " + dochodBazowy + ", kopalnia " + wydobycie + ").", Ton.ZLOTO));
+    }
+
     public List<Zdarzenie> rozegrajPoranek(Loch loch, Random los) {
         wymagaj(Faza.PORANEK);
-        List<Zdarzenie> zdarzenia = new ArrayList<>();
-        Skarbiec skarbiec = loch.getSkarbiec();
-
-        int wydobycie = loch.odbierzWydobycie();
-        skarbiec.wplac(dochodBazowy + wydobycie);
-        bilans.przychod(dochodBazowy, wydobycie);
-        zdarzenia.add(new Informacja("Przypływ złota: +" + (dochodBazowy + wydobycie)
-                + " (dochód " + dochodBazowy + ", kopalnia " + wydobycie + ").", Ton.ZLOTO));
+        List<Zdarzenie> zdarzenia = new ArrayList<>(przyjmijPrzychod(loch));
 
         wyplacPensje(loch, zdarzenia);
         rekrutuj(loch, zdarzenia);

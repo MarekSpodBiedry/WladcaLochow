@@ -98,6 +98,7 @@ public class Gra implements Serializable {
         if (samouczek) {
             dzien.ustawLimitRozkazow(Samouczek.rozkazyNaDzien(numerDnia));
         }
+        loguj(dzien.przyjmijPrzychod(loch));
         loguj(new Informacja(dzien.getRaport().opis(),
                 dzien.getRaport().minBohaterow() > 0 ? Ton.ZLY : Ton.NEUTRALNY));
         if (dzien.getKandydaci().isEmpty()) {
