@@ -1,5 +1,7 @@
 # Władca Lochów
 
+<img src="zasoby/ikona.png" alt="Ikona gry" width="96" align="right">
+
 **W zwykłych grach jesteś bohaterem, który schodzi do lochu po skarb. Tutaj jest odwrotnie:
 loch jest Twój, skarb jest Twój, a bohaterowie to włamywacze.**
 
@@ -199,6 +201,13 @@ skrypt zapisany samymi znakami ASCII; po każdej zmianie źródła trzeba go od�
 
 ```bash
 python3 narzedzia/zbuduj-instalator.py
+```
+
+Ikona gry (`zasoby/ikona.ico`) to złote „WŁ” z bloków, rysowane skryptem. Workflow dołącza ją
+do wydania, a instalator ustawia na skrótach. Po zmianie wyglądu trzeba ją odświeżyć (wymaga Pillow):
+
+```bash
+python3 narzedzia/zbuduj-ikone.py
 ```
 
 Podgląd samej animacji instalatora, bez pobierania i bez zmian na dysku:

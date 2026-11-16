@@ -21,6 +21,20 @@ class InstalatorTest {
         }
     }
 
+    /** Ikona dołączana do wydań musi być prawdziwym plikiem ICO z kilkoma rozmiarami. */
+    @Test
+    void ikonaJestPoprawnymPlikiemIco() throws Exception {
+        byte[] bajty = Files.readAllBytes(Path.of("zasoby", "ikona.ico"));
+        // nagłówek ICO: dwa bajty zerowe, typ 1 (ikona), potem liczba obrazów
+        assertEquals(0, bajty[0]);
+        assertEquals(0, bajty[1]);
+        assertEquals(1, bajty[2]);
+        assertEquals(0, bajty[3]);
+        int obrazy = (bajty[4] & 0xFF) | ((bajty[5] & 0xFF) << 8);
+        assertTrue(obrazy >= 4, "ikona powinna mieć kilka rozmiarów, a ma " + obrazy);
+        assertEquals(16, bajty[6] & 0xFF, "pierwszy rozmiar to 16 pikseli");
+    }
+
     /** Gra i instalator muszą mówić o tym samym repozytorium, pliku i opcji autotestu. */
     @Test
     void instalatorIGraSaZeSobaZgodne() throws Exception {
