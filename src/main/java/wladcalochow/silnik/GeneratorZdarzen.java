@@ -18,6 +18,7 @@ public final class GeneratorZdarzen {
 
     public static final int DNI_SPOKOJU = 2;
     public static final int MAX_BOHATEROW = 12;
+    public static final double SZANSA_ZEROWEGO_DOCHODU = 0.05;
 
     private GeneratorZdarzen() {
     }
@@ -29,7 +30,9 @@ public final class GeneratorZdarzen {
     /** W samouczku pierwsze dni zawsze przynoszą dochód i kandydatów, a pierwszy atak jest łatwy. */
     public static DzienGry nowyDzien(int numer, Loch loch, Random los, boolean samouczek) {
         boolean lagodnie = samouczek && numer <= Samouczek.DZIEN_PIERWSZEGO_ATAKU;
-        int dochod = los.nextDouble() < 0.15 && !lagodnie ? 0 : 20 + los.nextInt(51) + 2 * numer;
+        // Dochód waha się w węższym zakresie, a zerowy zdarza się rzadko: wcześniej co siódmy dzień
+        // dawał 0 i loch nie miał z czego zapłacić żołdu.
+        int dochod = los.nextDouble() < SZANSA_ZEROWEGO_DOCHODU && !lagodnie ? 0 : 40 + los.nextInt(31) + 2 * numer;
         if (lagodnie) {
             dochod = Math.max(40, dochod);
         }
