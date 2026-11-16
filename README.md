@@ -155,9 +155,10 @@ Klawisz H otwiera pomoc w dowolnej chwili.
 
 Dzień składa się z czterech faz:
 
-1. **Poranek.** Widzisz raport zwiadu i listę kandydatów. Wydajesz najwyżej 2 rozkazy.
-2. **Dochód i rekrutacja.** Wpływa złoto, ministrowie pobierają pensje, Minister Finansów wyznacza
-   budżet, a Minister Pracy zatrudnia potwory i wysyła jedną trzecią załogi do kopalni.
+1. **Poranek.** Wpływa złoto (dochód i wczorajszy urobek z kopalni). Widzisz raport zwiadu i listę
+   kandydatów. Wydajesz najwyżej 2 rozkazy.
+2. **Rekrutacja.** Ministrowie pobierają pensje, Minister Finansów wyznacza budżet, a Minister Pracy
+   zatrudnia potwory i wysyła jedną trzecią załogi do kopalni.
 3. **Obrona.** Bohaterowie atakują, walka toczy się rundami (krok po kroku albo automatycznie).
 4. **Wieczór.** Górnicy oddają urobek (wpłynie rano), wojownicy dostają żołd, wszyscy są leczeni.
 
