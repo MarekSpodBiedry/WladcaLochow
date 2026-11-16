@@ -54,7 +54,7 @@ public final class GeneratorZdarzen {
             bohaterowie = List.of(giermek);
             raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
         } else {
-            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow().size(), los);
+            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(), los);
             raport = zwiad(bohaterowie, los);
         }
         Set<String> ministrowie = new HashSet<>();
@@ -66,26 +66,55 @@ public final class GeneratorZdarzen {
     }
 
     /**
-     * Im późniejszy dzień i pełniejszy skarbiec, tym liczniejsi i silniejsi bohaterowie. Liczba bohaterów
-     * waha się najwyżej o 25% wokół zagrożenia i nie przekracza liczby potworów w lochu plus jeden:
-     * osłabiony loch ma szansę się odbudować, zamiast od razu dostać atak sześciu bohaterów.
+     * Siła ataku rośnie razem z siłą lochu, a nie bez końca z numerem dnia. Bohaterowie dobierają się tak,
+     * żeby ich łączna wartość (ta sama miara co cena łapówki) była ułamkiem wartości obrońców lochu.
+     * Ułamek rośnie przez pierwsze {@value #DNI_DO_PELNEJ_GROZY} dni, waha się losowo, a czasem przychodzi
+     * fala znacznie silniejsza niż zwykle. Bogaty skarbiec przyciąga dodatkowych bohaterów.
+     * Dzięki temu dobrze prowadzony loch może trwać bez końca, ale pech i złe decyzje go niszczą.
      */
-    static List<Bohater> losujBohaterow(int numer, int zloto, int potwory, Random los) {
+    static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, Random los) {
         List<Bohater> bohaterowie = new ArrayList<>();
         if (numer <= DNI_SPOKOJU || los.nextDouble() < 0.20) {
             return bohaterowie;
         }
         Set<String> zajete = new HashSet<>();
-        double zagrozenie = 0.6 + 0.18 * numer + zloto / 500.0;
-        int ilu = (int) Math.floor(zagrozenie * (0.75 + 0.5 * los.nextDouble()));
-        ilu = Math.min(Math.min(MAX_BOHATEROW, potwory + 1), ilu);
-        for (int i = 0; i < ilu; i++) {
+        // Walczą mniej więcej dwie trzecie załogi (reszta kopie).
+        double obrona = DzienGry.wartoscOddzialu(potwory) * 2.0 / 3.0;
+        double rozwoj = Math.min(1.0, numer / (double) DNI_DO_PELNEJ_GROZY);
+        double mnoznik = (GROZA_POCZATKOWA + (GROZA_PELNA - GROZA_POCZATKOWA) * rozwoj) * (0.75 + 0.5 * los.nextDouble());
+        if (los.nextDouble() < SZANSA_FALI) {
+            mnoznik *= SILA_FALI;
+        }
+        double minimum = Math.min(MINIMUM_POZNE, MINIMUM_POCZATKOWE + MINIMUM_NA_DZIEN * numer);
+        double cel = Math.max(minimum, obrona * mnoznik) + zloto / ZLOTO_NA_PUNKT_ZAGROZENIA;
+        double hartowanie = Math.min(MAX_HARTOWANIE, HARTOWANIE_NA_DZIEN * (numer - 1));
+        int wartosc = 0;
+        while (wartosc < cel && bohaterowie.size() < MAX_BOHATEROW) {
             Bohater bohater = FabrykaIstot.losowyBohater(los, zajete);
-            bohater.zahartuj(0.025 * (numer - 1));
+            bohater.zahartuj(hartowanie);
             bohaterowie.add(bohater);
+            wartosc += DzienGry.wartoscOddzialu(List.of(bohater));
         }
         return bohaterowie;
     }
+
+    /** Po tylu dniach groza ataków osiąga pełny poziom względem siły lochu. */
+    static final int DNI_DO_PELNEJ_GROZY = 40;
+    /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
+    static final double GROZA_POCZATKOWA = 0.45;
+    static final double GROZA_PELNA = 1.30;
+    /** Czasem przychodzi fala: atak dużo silniejszy niż zwykle (pech, na który trzeba mieć zapas). */
+    static final double SZANSA_FALI = 0.12;
+    static final double SILA_FALI = 1.9;
+    /** Najmniejsza wartość ataku: nawet pusty loch jest napadany, a z czasem coraz mocniej, do pewnej granicy. */
+    static final double MINIMUM_POCZATKOWE = 30;
+    static final double MINIMUM_NA_DZIEN = 2.5;
+    static final double MINIMUM_POZNE = 250;
+    /** Ile złota w skarbcu przyciąga dodatkowy punkt wartości ataku. */
+    static final double ZLOTO_NA_PUNKT_ZAGROZENIA = 8;
+    /** Bohaterowie twardnieją z dniami, ale tylko do pewnej granicy. */
+    static final double HARTOWANIE_NA_DZIEN = 0.01;
+    static final double MAX_HARTOWANIE = 0.40;
 
     /** Zwiad nie jest dokładny: podaje przedział liczebności, czasem jeden rodzaj i szacunek łapówki. */
     static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los) {

@@ -52,21 +52,31 @@ class BalansTest {
         assertTrue(dniZLupem > 0, "łupy z walk trafiły do skarbca");
     }
 
-    @Test
-    void bohaterowNieJestWiecejNizPotworowPlusJeden() {
+    /** Średnia wartość ataku przy danej załodze (bez dni spokoju). */
+    private static double sredniAtak(java.util.List<wladcalochow.model.Potwor> potwory, int dzien) {
         Random los = new Random(8);
-        for (int potwory = 0; potwory <= 12; potwory++) {
-            for (int i = 0; i < 200; i++) {
-                int ilu = GeneratorZdarzen.losujBohaterow(40, 5000, potwory, los).size();
-                assertTrue(ilu <= potwory + 1, potwory + " potworów, a bohaterów " + ilu);
-            }
+        long suma = 0;
+        for (int i = 0; i < 2000; i++) {
+            suma += DzienGry.wartoscOddzialu(GeneratorZdarzen.losujBohaterow(dzien, 0, potwory, los));
         }
-        // Silny loch późno w grze nadal dostaje duże ataki.
-        int najwiecej = 0;
-        for (int i = 0; i < 200; i++) {
-            najwiecej = Math.max(najwiecej, GeneratorZdarzen.losujBohaterow(40, 5000, 12, los).size());
+        return suma / 2000.0;
+    }
+
+    @Test
+    void silaAtakuZalezyOdSilyLochuANieTylkoOdDnia() {
+        Random los = new Random(1);
+        java.util.Set<String> imiona = new java.util.HashSet<>();
+        java.util.List<wladcalochow.model.Potwor> gobliny = new java.util.ArrayList<>();
+        java.util.List<wladcalochow.model.Potwor> ogry = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            gobliny.add(FabrykaIstot.goblin(los, imiona));
+            ogry.add(FabrykaIstot.ogr(los, imiona));
         }
-        assertEquals(GeneratorZdarzen.MAX_BOHATEROW, najwiecej);
+        double naGobliny = sredniAtak(gobliny, 60);
+        double naOgry = sredniAtak(ogry, 60);
+        assertTrue(naOgry > 2 * naGobliny, "silny loch dostaje mocniejsze ataki: gobliny " + naGobliny + ", ogry " + naOgry);
+        // Atak na ten sam loch nie rośnie bez końca z numerem dnia.
+        assertEquals(sredniAtak(ogry, 60), sredniAtak(ogry, 500), 1.0);
     }
 
     @Test
