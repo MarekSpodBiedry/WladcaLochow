@@ -248,6 +248,7 @@ public final class Aplikacja {
         boolean jestZapis = ZapisGry.istnieje(plikZapisu);
         List<Guzik> guziki = new ArrayList<>();
         guziki.add(new Guzik('k', "Kontynuuj", false, jestZapis, this::kontynuuj));
+        guziki.add(new Guzik('o', "O grze", false, true, this::dialogOGrze));
         guziki.add(new Guzik('h', "Pomoc", false, true, this::dialogPomoc));
         guziki.add(new Guzik('q', "Wyjście", false, true, this::wyjdzZGry));
         guziki.add(new Guzik('n', "Nowa gra", true, true, this::nowaGra));
@@ -632,6 +633,11 @@ public final class Aplikacja {
 
     // ================= przebieg gry =================
 
+    /** Krótkie przedstawienie gry dla kogoś, kto widzi ją pierwszy raz. Kończy się propozycją nowej gry. */
+    private void dialogOGrze() {
+        strona(Doradca.O_GRZE, 0, "Nowa gra", this::nowaGra, this::zamknijDialog);
+    }
+
     private void nowaGra() {
         komunikat = null;
         dialog = new Dialog("Nowa gra",
@@ -648,24 +654,25 @@ public final class Aplikacja {
         long ziarno = ziarnoStartowe != null ? ziarnoStartowe : System.nanoTime();
         gra = samouczek ? Gra.nowaZSamouczkiem(ziarno) : Gra.nowa(ziarno);
         if (samouczek) {
-            strona(0, "Wybierz ministrów", this::wybierzMinistraFinansow, this::porzucNowaGre);
+            strona(Doradca.STRONY, 0, "Wybierz ministrów", this::wybierzMinistraFinansow, this::porzucNowaGre);
         } else {
             wybierzMinistraFinansow();
         }
     }
 
     /** Strona wprowadzenia lub pomocy z przyciskami Dalej i Wstecz. */
-    private void strona(int numer, String etykietaKonca, Runnable poZakonczeniu, Runnable anuluj) {
-        Doradca.Strona strona = Doradca.STRONY.get(numer);
-        boolean ostatnia = numer == Doradca.STRONY.size() - 1;
+    private void strona(List<Doradca.Strona> strony, int numer, String etykietaKonca, Runnable poZakonczeniu,
+                        Runnable anuluj) {
+        Doradca.Strona strona = strony.get(numer);
+        boolean ostatnia = numer == strony.size() - 1;
         List<Dialog.Opcja> opcje = new ArrayList<>();
         opcje.add(ostatnia
                 ? new Dialog.Opcja(etykietaKonca, "To już ostatnia strona.", true, poZakonczeniu)
-                : new Dialog.Opcja("Dalej", "Następna strona: " + Doradca.STRONY.get(numer + 1).tytul() + ".", true,
-                        () -> strona(numer + 1, etykietaKonca, poZakonczeniu, anuluj)));
+                : new Dialog.Opcja("Dalej", "Następna strona: " + strony.get(numer + 1).tytul() + ".", true,
+                        () -> strona(strony, numer + 1, etykietaKonca, poZakonczeniu, anuluj)));
         if (numer > 0) {
             opcje.add(new Dialog.Opcja("Wstecz", "Poprzednia strona.", true,
-                    () -> strona(numer - 1, etykietaKonca, poZakonczeniu, anuluj)));
+                    () -> strona(strony, numer - 1, etykietaKonca, poZakonczeniu, anuluj)));
         }
         List<Dialog.Wiersz> wiersze = new ArrayList<>();
         for (String akapit : strona.akapity()) {
@@ -674,7 +681,7 @@ public final class Aplikacja {
             }
             wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
         }
-        dialog = new Dialog(wiersze, strona.tytul() + " · " + (numer + 1) + "/" + Doradca.STRONY.size(),
+        dialog = new Dialog(wiersze, strona.tytul() + " · " + (numer + 1) + "/" + strony.size(),
                 opcje, anuluj);
     }
 
@@ -1091,7 +1098,7 @@ public final class Aplikacja {
         List<String> rada = wGrze && gra.czyTrwaSamouczek() && tryb == Tryb.PORANEK
                 ? Doradca.poranek(gra.getNumerDnia()) : List.of();
         if (rada.isEmpty()) {
-            strona(0, "Zamknij", this::zamknijDialog, this::zamknijDialog);
+            strona(Doradca.STRONY, 0, "Zamknij", this::zamknijDialog, this::zamknijDialog);
             return;
         }
         List<Dialog.Wiersz> wiersze = new ArrayList<>();
@@ -1104,7 +1111,7 @@ public final class Aplikacja {
         dialog = new Dialog(wiersze, "Doradca · dzień " + gra.getNumerDnia(),
                 List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog),
                         new Dialog.Opcja("Zasady gry", "Cztery krótkie strony o tym, jak działa loch.", true,
-                                () -> strona(0, "Zamknij", this::zamknijDialog, this::zamknijDialog))),
+                                () -> strona(Doradca.STRONY, 0, "Zamknij", this::zamknijDialog, this::zamknijDialog))),
                 this::zamknijDialog);
     }
 }

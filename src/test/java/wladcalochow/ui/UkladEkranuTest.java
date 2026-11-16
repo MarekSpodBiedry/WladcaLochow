@@ -66,7 +66,7 @@ class UkladEkranuTest {
     }
 
     /** Fragmenty ekranów, które automat musi po drodze zobaczyć, żeby test miał sens. */
-    private static final List<String> WYMAGANE_EKRANY = List.of("Nowa gra", "Kim jesteś", "Wybierz Ministra Pracy",
+    private static final List<String> WYMAGANE_EKRANY = List.of("Nowa gra", "Odwrócona bajka", "Dlaczego warto", "Kim jesteś", "Wybierz Ministra Pracy",
             "Doradca · dzień 2", "Doradca · pierwsza walka", "Podsumowanie dnia", "Ulepszenia lochu",
             "Postawa wobec ataku", "Budżet rekrutacji", "Potwory w lochu", "Zmiana ministra", "Bohaterowie",
             "Loch upadł", "od jutra:", "Z kopalni jutro rano");

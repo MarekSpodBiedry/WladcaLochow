@@ -12,6 +12,34 @@ final class Doradca {
     record Strona(String tytul, List<String> akapity) {
     }
 
+    /** Przedstawienie gry w menu głównym: o co chodzi i dlaczego warto zagrać. */
+    static final List<Strona> O_GRZE = List.of(
+            new Strona("Odwrócona bajka", List.of(
+                    "W zwykłych grach jesteś bohaterem, który schodzi do lochu po skarb. Tutaj jest odwrotnie: "
+                            + "loch jest Twój, skarb jest Twój, a bohaterowie to włamywacze.",
+                    "Masz skarbiec pełen złota i gromadę potworów na żołdzie: tchórzliwe gobliny z procami, "
+                            + "twarde orki i ogry, które idą przez walkę jak czołg.",
+                    "Nie machasz mieczem i nie przesuwasz potworów po planszy. Ty rządzisz: rano podejmujesz "
+                            + "jedną albo dwie decyzje, a potem patrzysz, jak dzień rozgrywa się sam.")),
+            new Strona("Twój dzień", List.of(
+                    "Rano decydujesz. Kupić pułapki? Dać premię potworowi, któremu puszczają nerwy? "
+                            + "Wymienić ministra? A może zapłacić bohaterom, żeby sobie poszli?",
+                    "Potem loch pracuje: wpływa złoto, ministrowie zatrudniają potwory i wysyłają co trzeciego "
+                            + "do kopalni.",
+                    "Jeśli przyjdą bohaterowie, potwory stają pod bramą. Walkę oglądasz ruch po ruchu "
+                            + "albo przewijasz do końca.",
+                    "Wieczorem płacisz żołd i dostajesz rachunek: ile złota przyszło, na co poszło "
+                            + "i kto nie dożył wieczora.")),
+            new Strona("Dlaczego warto", List.of(
+                    "Chciwość kontra bezpieczeństwo: złota potrzebujesz na żołd i ulepszenia, ale pełny skarbiec "
+                            + "ściąga coraz groźniejszych gości.",
+                    "Ministrowie mają charakter: jeden chomikuje złoto, drugi wydaje wszystko od ręki. "
+                            + "To Ty wybierasz, komu oddać loch.",
+                    "Potwory mają imiona. Kto przeżyje walkę, staje się weteranem: bije mocniej, ale chce "
+                            + "więcej złota. Strata takiego boli.",
+                    "Nie da się wygrać, da się tylko przetrwać dłużej. Ile dni wytrzymasz? "
+                            + "Zacznij od gry z samouczkiem: niczego nie musisz umieć.")));
+
     static final List<Strona> STRONY = List.of(
             new Strona("Kim jesteś", List.of(
                     "Jesteś Władcą Lochów. Masz skarbiec ze złotem i potwory na żołdzie. "
