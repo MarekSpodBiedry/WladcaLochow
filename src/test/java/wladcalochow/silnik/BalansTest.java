@@ -53,6 +53,23 @@ class BalansTest {
     }
 
     @Test
+    void bohaterowNieJestWiecejNizPotworowPlusJeden() {
+        Random los = new Random(8);
+        for (int potwory = 0; potwory <= 12; potwory++) {
+            for (int i = 0; i < 200; i++) {
+                int ilu = GeneratorZdarzen.losujBohaterow(40, 5000, potwory, los).size();
+                assertTrue(ilu <= potwory + 1, potwory + " potworów, a bohaterów " + ilu);
+            }
+        }
+        // Silny loch późno w grze nadal dostaje duże ataki.
+        int najwiecej = 0;
+        for (int i = 0; i < 200; i++) {
+            najwiecej = Math.max(najwiecej, GeneratorZdarzen.losujBohaterow(40, 5000, 12, los).size());
+        }
+        assertEquals(GeneratorZdarzen.MAX_BOHATEROW, najwiecej);
+    }
+
+    @Test
     void zerowyDochodJestRzadki() {
         Gra gra = Gra.nowa(3);
         gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));

@@ -54,7 +54,7 @@ public final class GeneratorZdarzen {
             bohaterowie = List.of(giermek);
             raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
         } else {
-            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), los);
+            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow().size(), los);
             raport = zwiad(bohaterowie, los);
         }
         Set<String> ministrowie = new HashSet<>();
@@ -65,15 +65,20 @@ public final class GeneratorZdarzen {
                 loch.getSkarbiec().getZloto());
     }
 
-    /** Im późniejszy dzień i pełniejszy skarbiec, tym liczniejsi i silniejsi bohaterowie. */
-    static List<Bohater> losujBohaterow(int numer, int zloto, Random los) {
+    /**
+     * Im późniejszy dzień i pełniejszy skarbiec, tym liczniejsi i silniejsi bohaterowie. Liczba bohaterów
+     * waha się najwyżej o 25% wokół zagrożenia i nie przekracza liczby potworów w lochu plus jeden:
+     * osłabiony loch ma szansę się odbudować, zamiast od razu dostać atak sześciu bohaterów.
+     */
+    static List<Bohater> losujBohaterow(int numer, int zloto, int potwory, Random los) {
         List<Bohater> bohaterowie = new ArrayList<>();
         if (numer <= DNI_SPOKOJU || los.nextDouble() < 0.20) {
             return bohaterowie;
         }
         Set<String> zajete = new HashSet<>();
         double zagrozenie = 0.6 + 0.18 * numer + zloto / 500.0;
-        int ilu = Math.min(MAX_BOHATEROW, (int) Math.floor(zagrozenie * (0.5 + los.nextDouble())));
+        int ilu = (int) Math.floor(zagrozenie * (0.75 + 0.5 * los.nextDouble()));
+        ilu = Math.min(Math.min(MAX_BOHATEROW, potwory + 1), ilu);
         for (int i = 0; i < ilu; i++) {
             Bohater bohater = FabrykaIstot.losowyBohater(los, zajete);
             bohater.zahartuj(0.025 * (numer - 1));
