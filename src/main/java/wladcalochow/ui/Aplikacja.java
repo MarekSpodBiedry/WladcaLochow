@@ -87,7 +87,8 @@ public final class Aplikacja {
     private Dialog dialog;
     private Ekran poprzedni;
     private boolean koniec;
-    private boolean auto;
+    /** Walka toczy się sama. Klawisz A przełącza na ruchy po Enterze i z powrotem. */
+    private boolean auto = true;
     private Istota aktor;
     private Istota cel;
     private int przewiniecie;
@@ -1178,8 +1179,8 @@ public final class Aplikacja {
             zakonczDzien();
             return;
         }
+        // Walka toczy się sama (auto), chyba że gracz wyłączył automat klawiszem A; wybór zostaje na kolejne walki.
         tryb = Tryb.WALKA;
-        auto = false;
         aktor = null;
         cel = null;
         if (gra.czyTrwaSamouczek() && !radaWalkiPokazana) {
@@ -1230,7 +1231,6 @@ public final class Aplikacja {
         gra.zakonczDzien();
         aktor = null;
         cel = null;
-        auto = false;
         przewiniecie = 0;
         if (gra.czyKoniecGry()) {
             tryb = Tryb.KONIEC_GRY;

@@ -103,7 +103,8 @@ final class Doradca {
     static List<String> walka() {
         return List.of(
                 "To jest walka. Bohaterowie stoją po lewej, Twoi obrońcy po prawej, przed bramą.",
-                "Enter wykonuje ruch jednej postaci. A włącza automat, F przewija walkę do końca.",
+                "Walka toczy się sama. A wyłącza automat: wtedy Enter wykonuje ruch jednej postaci. "
+                        + "F przewija walkę do końca.",
                 "♥ to życie, ☻ to morale. Każde trafienie obniża morale; kto je straci, ucieka z pola walki.");
     }
 
