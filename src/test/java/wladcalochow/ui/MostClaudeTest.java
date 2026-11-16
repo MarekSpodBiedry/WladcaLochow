@@ -95,6 +95,49 @@ class MostClaudeTest {
     }
 
     @Test
+    void gdyGraClaudeGraToczySieSamaBezNaciskaniaKlawiszy(@TempDir Path katalog) throws Exception {
+        Path claude = katalog.resolve("claude");
+        Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(SZER, WYS), katalog.resolve("zapisy"), 7L, claude);
+        aplikacja.rysuj();
+        znak(aplikacja, 'c');
+        znak(aplikacja, 'n');
+        long teraz = 0;
+        String ostatniaOdpowiedz = "";
+        boolean widzianoDecyzje = false;
+        // Udajemy Claude'a, który na każdy stan odpisuje bez rozkazów. Gracz niczego nie naciska.
+        for (int krok = 0; krok < 20_000 && aplikacja.gra() != null
+                && (aplikacja.gra().getDzien() == null || aplikacja.gra().getNumerDnia() < 4)
+                && !aplikacja.gra().czyKoniecGry(); krok++) {
+            String id = id(stan(claude));
+            if (!id.equals(ostatniaOdpowiedz)) {
+                odpisz(claude, id.startsWith("start") ? "id: " + id + "\nstart: MF1 MP1\n" : "id: " + id + "\npowod: czekam\n");
+                ostatniaOdpowiedz = id;
+            }
+            teraz += 300;
+            aplikacja.tik(teraz);
+            aplikacja.rysuj();
+            widzianoDecyzje |= aplikacja.klatka().tekst().contains("Decyzje Claude'a");
+        }
+        assertTrue(aplikacja.gra().czyKoniecGry() || aplikacja.gra().getNumerDnia() >= 4,
+                "gra sama doszła do dnia 4, jest dzień " + aplikacja.gra().getNumerDnia());
+        assertTrue(widzianoDecyzje, "okno z decyzjami było widać, zanim samo się zamknęło");
+    }
+
+    @Test
+    void bezClaudeaGraNieToczySieSama(@TempDir Path katalog) throws Exception {
+        ZapisGry.zapisz(wladcalochow.silnik.Gra.nowa(1), ZapisGry.plikSlotu(katalog.resolve("zapisy"), 1));
+        Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(SZER, WYS), katalog.resolve("zapisy"), 1L,
+                katalog.resolve("claude"));
+        var gra = wladcalochow.silnik.Gra.nowa(2);
+        gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));
+        aplikacja.pokazGre(gra, 1);
+        for (long t = 0; t < 60_000; t += 300) {
+            aplikacja.tik(t);
+        }
+        assertEquals(1, aplikacja.gra().getNumerDnia(), "bez Claude'a dzień czeka na gracza");
+    }
+
+    @Test
     void wylaczenieClaudeaPrzestajeCzekac(@TempDir Path katalog) throws Exception {
         Path claude = katalog.resolve("claude");
         Aplikacja aplikacja = new Aplikacja(new KonsolaBezEkranu(SZER, WYS), katalog.resolve("zapisy"), 6L, claude);

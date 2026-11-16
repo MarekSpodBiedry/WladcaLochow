@@ -33,6 +33,23 @@ final class Dialog {
     private int wybrana;
     private int pierwsza;
     private int widoczne = 1;
+    /** Gdy gra toczy się sama, takie okno zatwierdza się samo po chwili (pierwszą aktywną opcją). */
+    private boolean samoZatwierdzane;
+
+    /** Oznacza okno jako zatwierdzane samoczynnie w trybie, w którym gra toczy się sama. Zwraca to samo okno. */
+    Dialog samoZatwierdzane() {
+        samoZatwierdzane = true;
+        return this;
+    }
+
+    boolean czySamoZatwierdzane() {
+        return samoZatwierdzane;
+    }
+
+    /** Wybiera zaznaczoną opcję, tak jakby gracz nacisnął Enter. */
+    void zatwierdz() {
+        wybierz(wybrana);
+    }
 
     Dialog(String tytul, List<String> wstep, List<Opcja> opcje, Runnable anuluj) {
         this(wstep.stream().map(tekst -> new Wiersz(tekst, Paleta.TEKST)).toList(), tytul, opcje, anuluj);

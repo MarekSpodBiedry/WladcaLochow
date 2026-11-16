@@ -149,15 +149,9 @@ public final class Aplikacja {
         try {
             while (!koniec) {
                 rysuj();
-                boolean samaGra = tryb == Tryb.WALKA && auto && dialog == null;
-                Wejscie wejscie = terminal.czytaj(samaGra ? 450 : 300);
+                Wejscie wejscie = terminal.czytaj(walkaTrwaSama() ? 450 : 300);
                 switch (wejscie) {
-                    case Wejscie.Brak brak -> {
-                        if (samaGra) {
-                            krokWalki();
-                        }
-                        sprawdzClaude();
-                    }
+                    case Wejscie.Brak brak -> tik(System.currentTimeMillis());
                     case Wejscie.Koniec k -> {
                         zapiszPrzyWyjsciu();
                         koniec = true;
@@ -439,7 +433,7 @@ public final class Aplikacja {
                     yield "Czekam na decyzje Claude'a · C: graj sam";
                 }
                 if (claudeGra) {
-                    yield "Enter: start dnia · C: wyłącz Claude'a";
+                    yield "Gra toczy się sama · C: przejmij grę";
                 }
                 yield rozkazy > 0
                         ? "Wydaj rozkaz (zostało " + rozkazy + ") albo Enter: start dnia"
@@ -953,7 +947,7 @@ public final class Aplikacja {
         }
         dialog = new Dialog(wiersze, tytul,
                 List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog)),
-                this::zamknijDialog);
+                this::zamknijDialog).samoZatwierdzane();
     }
 
     private void porzucNowaGre() {
@@ -1007,6 +1001,69 @@ public final class Aplikacja {
             czekamNaStart = false;
         } catch (IOException | RuntimeException e) {
             bladClaude("Nie udało się zapisać stanu gry dla Claude'a: " + e.getMessage());
+        }
+    }
+
+    /** Walka toczy się sama: automat walki jest włączony albo gra Claude. */
+    private boolean walkaTrwaSama() {
+        return tryb == Tryb.WALKA && (auto || claudeGra) && dialog == null;
+    }
+
+    /**
+     * Jedno „tyknięcie” gry, gdy gracz niczego nie naciska: krok walki w automacie, sprawdzenie odpowiedzi
+     * Claude'a i, gdy gra Claude, samoczynne przechodzenie dalej po krótkiej pauzie.
+     */
+    void tik(long teraz) {
+        if (walkaTrwaSama()) {
+            krokWalki();
+        }
+        sprawdzClaude();
+        samaGra(teraz);
+    }
+
+    /** Pauza, przez którą gracz widzi ekran albo okno, zanim gra sama przejdzie dalej. */
+    static final long PAUZA_SAMEJ_GRY_MS = 2500;
+    private Object czekaNaPrzejscie;
+    private long odKiedyCzeka;
+
+    /**
+     * Gdy gra Claude, gra toczy się sama: okna z decyzjami i podsumowaniem zatwierdzają się same, dzień
+     * rusza sam, a po walce dzień sam się kończy. Każdy krok czeka chwilę, żeby gracz zdążył go zobaczyć.
+     * Gra zatrzymuje się na upadku lochu i na każdym oknie, które wymaga decyzji gracza.
+     */
+    private void samaGra(long teraz) {
+        Object stan = null;
+        if (claudeGra && gra != null && czekamNa == null && gra.getDzien() != null) {
+            if (dialog != null) {
+                stan = dialog.czySamoZatwierdzane() ? dialog : null;
+            } else if (tryb == Tryb.PORANEK || tryb == Tryb.WIECZOR) {
+                stan = tryb;
+            } else if (tryb == Tryb.WALKA) {
+                Walka walka = gra.getDzien().getWalka();
+                stan = walka == null || walka.czyZakonczona() ? walka : null;
+            }
+        }
+        if (stan == null) {
+            czekaNaPrzejscie = null;
+            return;
+        }
+        if (stan != czekaNaPrzejscie) {
+            czekaNaPrzejscie = stan;
+            odKiedyCzeka = teraz;
+            return;
+        }
+        if (teraz - odKiedyCzeka < PAUZA_SAMEJ_GRY_MS) {
+            return;
+        }
+        czekaNaPrzejscie = null;
+        if (dialog != null) {
+            dialog.zatwierdz();
+        } else if (tryb == Tryb.PORANEK) {
+            rozegrajDzien();
+        } else if (tryb == Tryb.WALKA) {
+            zakonczDzien();
+        } else if (tryb == Tryb.WIECZOR) {
+            nastepnyDzien();
         }
     }
 
@@ -1089,9 +1146,9 @@ public final class Aplikacja {
         most.zapiszHistorie(wynik.toString());
         zapisz();
         dialog = new Dialog(wiersze, "Decyzje Claude'a · dzień " + gra.getNumerDnia(),
-                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i rozpocznij dzień, kiedy chcesz.", true,
+                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i rozpocznij dzień.", true,
                         this::zamknijDialog)),
-                this::zamknijDialog);
+                this::zamknijDialog).samoZatwierdzane();
     }
 
     private static String jednaLinia(String tekst) {
@@ -1320,7 +1377,7 @@ public final class Aplikacja {
                         }),
                         new Dialog.Opcja("Obejrzyj loch", "Zamknij podsumowanie i zostań przy wieczornym widoku.",
                                 true, this::zamknijDialog)),
-                this::zamknijDialog);
+                this::zamknijDialog).samoZatwierdzane();
     }
 
     private static void pozycja(List<String> pozycje, String nazwa, int kwota) {
