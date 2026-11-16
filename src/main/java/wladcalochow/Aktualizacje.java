@@ -58,7 +58,10 @@ public final class Aktualizacje {
     public static Optional<String> najnowszeWydanie() {
         try {
             HttpClient klient = HttpClient.newBuilder().connectTimeout(LIMIT).build();
-            HttpRequest zapytanie = HttpRequest.newBuilder(URI.create(ADRES_API))
+            // WLADCA_API pozwala w testach podstawić własny adres (tak samo jak w instalatorze).
+            String nadpisany = System.getenv("WLADCA_API");
+            String adres = nadpisany == null || nadpisany.isBlank() ? ADRES_API : nadpisany;
+            HttpRequest zapytanie = HttpRequest.newBuilder(URI.create(adres))
                     .timeout(LIMIT)
                     .header("Accept", "application/vnd.github+json")
                     .header("User-Agent", "WladcaLochow")
