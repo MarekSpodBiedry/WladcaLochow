@@ -33,6 +33,13 @@ def kolor(hex_):
     return ((v >> 16) & 255, (v >> 8) & 255, v & 255)
 
 
+# Znaki ramek: czy linia idzie w lewo, w prawo, w górę, w dół od środka komórki.
+RAMKI = {
+    "─": (1, 1, 0, 0), "│": (0, 0, 1, 1), "╭": (0, 1, 0, 1), "╮": (1, 0, 0, 1), "╰": (0, 1, 1, 0),
+    "╯": (1, 0, 1, 0), "├": (0, 1, 1, 1), "┤": (1, 0, 1, 1), "┬": (1, 1, 0, 1), "┴": (1, 1, 1, 0),
+}
+
+
 def blok(d, znak, x, y, rgb):
     """Bloki rysujemy prostokątami, żeby sceneria nie miała szczelin między komórkami."""
     px, py = x * KOMORKA_W, y * KOMORKA_H
@@ -40,9 +47,18 @@ def blok(d, znak, x, y, rgb):
     prostokaty = {
         "█": (0, 0, w, h), "▀": (0, 0, w, h // 2), "▄": (0, h // 2, w, h),
         "▌": (0, 0, w // 2, h), "▐": (w // 2, 0, w, h),
-        # Paski życia i morale: ciągła kreska bez przerw między komórkami.
-        "─": (0, h // 2 - 1, w, h // 2 + 1), "━": (0, h // 2 - 1, w, h // 2 + 2),
+        # Paski życia i morale: ciągła gruba kreska bez przerw między komórkami.
+        "━": (0, h // 2 - 1, w, h // 2 + 2),
     }
+    if znak in RAMKI:
+        # Ramki: cienkie linie od środka komórki do jej brzegów, więc łączą się bez szczelin.
+        lewo, prawo, gora, dol = RAMKI[znak]
+        sx, sy = px + w // 2, py + h // 2
+        if lewo or prawo:
+            d.line([px if lewo else sx, sy, px + w - 1 if prawo else sx, sy], fill=rgb)
+        if gora or dol:
+            d.line([sx, py if gora else sy, sx, py + h - 1 if dol else sy], fill=rgb)
+        return True
     if znak not in prostokaty:
         return False
     x0, y0, x1, y1 = prostokaty[znak]
@@ -77,15 +93,19 @@ def rysuj(tsv, png):
         else:
             d.text((px + KOMORKA_W // 2, py + KOMORKA_H // 2), znak, font=SYMBOLE, fill=fg, anchor="mm")
     obraz.save(png)
-    print("zapisano", png.relative_to(KORZEN))
+    print("zapisano", png)
 
 
 def main():
-    zrodla = sorted((KORZEN / "target" / "podglady").glob("*.tsv"))
+    # Bez argumentów: zrzuty do README. Z argumentami: folder z .tsv i folder na obrazki.
+    zrodlo = Path(sys.argv[1]) if len(sys.argv) > 1 else KORZEN / "target" / "podglady"
+    cel = Path(sys.argv[2]) if len(sys.argv) > 2 else KORZEN / "docs"
+    zrodla = sorted(zrodlo.glob("*.tsv"))
     if not zrodla:
-        sys.exit("Brak target/podglady/*.tsv. Najpierw: mvn test -Dtest=PodgladyEkranuTest -Dpodglady=true")
+        sys.exit("Brak plików .tsv. Najpierw: mvn test -Dtest=PodgladyEkranuTest -Dpodglady=true")
+    cel.mkdir(parents=True, exist_ok=True)
     for tsv in zrodla:
-        rysuj(tsv, KORZEN / "docs" / (tsv.stem + ".png"))
+        rysuj(tsv, cel.resolve() / (tsv.stem + ".png"))
 
 
 if __name__ == "__main__":

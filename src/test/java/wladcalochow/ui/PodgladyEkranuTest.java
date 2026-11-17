@@ -55,6 +55,88 @@ class PodgladyEkranuTest {
         return aplikacja;
     }
 
+    private static void klawisz(Aplikacja a, char znak) {
+        a.obsluz(new Wejscie.Znak(znak));
+        a.rysuj();
+    }
+
+    private static void klawisz(Aplikacja a, Wejscie.Rodzaj rodzaj) {
+        a.obsluz(new Wejscie.Klawisz(rodzaj));
+        a.rysuj();
+    }
+
+    /** Zrzut każdego okna gry do target/podglady/okna (do przeglądu wyglądu, nie do README). */
+    @Test
+    void zapiszZrzutyWszystkichOkien(@TempDir Path katalog) throws Exception {
+        assumeTrue(Boolean.getBoolean("podglady"), "tylko na żądanie: -Dpodglady=true");
+        Path cel = Path.of("target", "podglady", "okna");
+
+        // Menu i okna z menu.
+        Path zapisy = katalog.resolve("menu");
+        Aplikacja menu = new Aplikacja(new KonsolaBezEkranu(SZER, WYS), zapisy, 7L, zapisy.resolve("claude"));
+        menu.rysuj();
+        zapiszKomorki(menu.klatka(), cel.resolve("01-menu.tsv"));
+        klawisz(menu, 'o');
+        zapiszKomorki(menu.klatka(), cel.resolve("02-o-grze.tsv"));
+        klawisz(menu, Wejscie.Rodzaj.ESC);
+        klawisz(menu, 'n');
+        zapiszKomorki(menu.klatka(), cel.resolve("03-nowa-gra.tsv"));
+        for (int i = 0; i < 12 && menu.czyDialog(); i++) {
+            klawisz(menu, Wejscie.Rodzaj.ENTER);
+            zapiszKomorki(menu.klatka(), cel.resolve(String.format("04-start-%02d.tsv", i)));
+        }
+
+        // Poranek dnia 9 i okna rozkazów.
+        Aplikacja gra = rozegrajDo(katalog.resolve("g"), 7, 9);
+        String[][] okna = {{"m", "10-ministrowie"}, {"b", "11-budzet"}, {"p", "12-postawa"}, {"u", "13-ulepszenia"},
+            {"o", "14-potwory"}, {"h", "16-pomoc"}};
+        for (String[] okno : okna) {
+            klawisz(gra, okno[0].charAt(0));
+            zapiszKomorki(gra.klatka(), cel.resolve(okno[1] + ".tsv"));
+            if (okno[0].equals("o")) {
+                klawisz(gra, '1');
+                zapiszKomorki(gra.klatka(), cel.resolve("15-potwor.tsv"));
+                klawisz(gra, Wejscie.Rodzaj.ESC);
+            }
+            while (gra.czyDialog()) {
+                klawisz(gra, Wejscie.Rodzaj.ESC);
+            }
+        }
+
+        // Podsumowanie dnia: pierwsze okno po rozpoczęciu dnia, które pojawi się wieczorem.
+        Gra stan = gra.gra();
+        for (int krok = 0; krok < 500; krok++) {
+            klawisz(gra, Wejscie.Rodzaj.ENTER);
+            if (gra.czyDialog() && stan.getDzien().getFaza() != DzienGry.Faza.PORANEK) {
+                zapiszKomorki(gra.klatka(), cel.resolve("17-podsumowanie.tsv"));
+                break;
+            }
+        }
+
+        // Koniec gry: sam Enter (nic nie robi) przegrywa po kilkudziesięciu dniach.
+        for (int krok = 0; krok < 50_000 && !stan.czyKoniecGry(); krok++) {
+            klawisz(gra, Wejscie.Rodzaj.ENTER);
+        }
+        for (int krok = 0; krok < 50 && !gra.czyDialog(); krok++) {
+            klawisz(gra, Wejscie.Rodzaj.ENTER);
+        }
+        zapiszKomorki(gra.klatka(), cel.resolve("18-koniec.tsv"));
+        // Podsumowanie ostatniego dnia (zwykle z poległymi): po zamknięciu okna klawisz S.
+        klawisz(gra, Wejscie.Rodzaj.ESC);
+        klawisz(gra, 's');
+        zapiszKomorki(gra.klatka(), cel.resolve("18b-podsumowanie-porazki.tsv"));
+        while (gra.czyDialog()) {
+            klawisz(gra, Wejscie.Rodzaj.ESC);
+        }
+
+        // Wczytywanie: menu z zapisami w slotach.
+        Path g = katalog.resolve("g");
+        Aplikacja wczytaj = new Aplikacja(new KonsolaBezEkranu(SZER, WYS), g, 7L, g.resolve("claude"));
+        wczytaj.rysuj();
+        klawisz(wczytaj, 'w');
+        zapiszKomorki(wczytaj.klatka(), cel.resolve("19-wczytaj.tsv"));
+    }
+
     @Test
     void zapiszZrzutyDoReadme(@TempDir Path katalog) throws Exception {
         assumeTrue(Boolean.getBoolean("podglady"), "tylko na żądanie: -Dpodglady=true");
