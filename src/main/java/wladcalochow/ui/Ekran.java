@@ -314,6 +314,21 @@ final class Ekran {
         return tekst.codePoints().map(Ekran::szerokoscZnaku).sum();
     }
 
+    /** Najdłuższy początek tekstu, który mieści się w podanej szerokości (bez wielokropka; co najmniej 1 znak). */
+    static String przytnijBezKropek(String tekst, int maks) {
+        StringBuilder sb = new StringBuilder();
+        int w = 0;
+        for (int cp : tekst.codePoints().toArray()) {
+            int z = szerokoscZnaku(cp);
+            if (w + z > maks && sb.length() > 0) {
+                break;
+            }
+            sb.appendCodePoint(cp);
+            w += z;
+        }
+        return sb.toString();
+    }
+
     /** Skraca tekst do podanej szerokości, dodając wielokropek. */
     static String przytnij(String tekst, int maks) {
         if (maks <= 0) {
