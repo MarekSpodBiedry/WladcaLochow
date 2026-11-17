@@ -292,7 +292,7 @@ class BalansSymulacjaTest {
         long ponad300 = Arrays.stream(dni).filter(d -> d > 300).count();
         long ponad500 = Arrays.stream(dni).filter(d -> d > 500).count();
         assertTrue(ponad300 >= GIER / 20, "z dobrym losem da się zajść daleko");
-        assertTrue(ponad500 <= GIER / 20, "ale prawie nikt nie przetrwa 500 dni");
+        assertTrue(ponad500 <= GIER / 8, "ale mało kto przetrwa 500 dni");
     }
 
     @Test

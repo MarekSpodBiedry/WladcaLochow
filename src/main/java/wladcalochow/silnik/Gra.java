@@ -31,6 +31,8 @@ public class Gra implements Serializable {
     }
 
     public static final int ZLOTO_STARTOWE = 300;
+    /** O jaką część maksymalnego morale spada morale każdego potwora, gdy Władca wyrzuca rannego. */
+    public static final double SPADEK_MORALE_PO_ZWOLNIENIU_RANNEGO = 0.08;
     private static final int MAX_DZIENNIK = 400;
 
     private final long ziarno;
@@ -192,6 +194,13 @@ public class Gra implements Serializable {
             }
             case Rozkaz.Zwolnienie r -> {
                 loch.usun(r.potwor());
+                if (r.potwor().czyRanny()) {
+                    // Wyrzucenie rannego towarzysza podkopuje zaufanie całej załogi.
+                    for (Potwor potwor : loch.getListaPotworow()) {
+                        potwor.zmienMorale(-(int) Math.round(potwor.getMaxMorale() * SPADEK_MORALE_PO_ZWOLNIENIU_RANNEGO));
+                    }
+                    yield r.potwor().getImie() + " zostaje wyrzucony ranny. Załoga traci zaufanie (morale spada)";
+                }
                 yield r.potwor().getImie() + " opuszcza loch (zwolnienie)";
             }
             case Rozkaz.ZakupUlepszenia r -> {

@@ -581,6 +581,9 @@ public final class Aplikacja {
         } else if (istota.czyOgluszona()) {
             znacznik = "ogł.";
             kolorZnacznika = Paleta.FIOLET;
+        } else if (istota instanceof Potwor ranny && ranny.czyRanny()) {
+            znacznik = "ranny";
+            kolorZnacznika = Paleta.CZERWIEN;
         } else if (istota instanceof Potwor potwor && potwor.czyWKopalni()) {
             znacznik = "kop.";
             kolorZnacznika = Paleta.TURKUS;
@@ -1493,7 +1496,8 @@ public final class Aplikacja {
             opcje.add(new Dialog.Opcja(Sprite.emoji(potwor) + " " + potwor.getImie() + " · " + potwor.nazwaRodzaju()
                     + " · poziom " + potwor.getPoziom(),
                     "siła " + potwor.getSilaAtaku() + " · życie " + potwor.getMaxPunktyZycia() + " · morale "
-                            + potwor.getMorale() + "/" + potwor.getMaxMorale() + " · żołd " + potwor.getZold(),
+                            + potwor.getMorale() + "/" + potwor.getMaxMorale() + " · żołd " + potwor.getZold()
+                            + (potwor.czyRanny() ? " · ranny, wraca za " + potwor.getDniRekonwalescencji() + " dni" : ""),
                     true, () -> dialogPotwor(potwor)));
         }
         if (opcje.isEmpty()) {
@@ -1508,7 +1512,9 @@ public final class Aplikacja {
     private void dialogPotwor(Potwor potwor) {
         List<Dialog.Opcja> opcje = new ArrayList<>();
         opcje.add(opcjaRozkazu("Premia", "Morale rośnie o 30% wartości maksymalnej.", new Rozkaz.Premia(potwor)));
-        opcje.add(opcjaRozkazu("Zwolnij", "Potwór natychmiast opuszcza loch i nie pobiera już żołdu.",
+        opcje.add(opcjaRozkazu("Zwolnij", potwor.czyRanny()
+                        ? "Ranny potwór natychmiast opuszcza loch. Reszta załogi traci przez to trochę morale."
+                        : "Potwór natychmiast opuszcza loch i nie pobiera już żołdu.",
                 new Rozkaz.Zwolnienie(potwor)));
         opcje.add(new Dialog.Opcja("Wróć do listy", "Bez wydawania rozkazu.", true, this::dialogPotwory));
         dialog = new Dialog(potwor.getImie() + " · " + potwor.nazwaRodzaju(),

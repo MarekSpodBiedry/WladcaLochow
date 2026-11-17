@@ -88,6 +88,31 @@ public abstract class Potwor extends Istota {
         return 3 * poziom;
     }
 
+    /** Dni, przez które ciężko ranny potwór jeszcze nie walczy i nie kopie (0: zdrowy). */
+    private int dniRekonwalescencji;
+
+    /** Ciężko ranny potwór dochodzi do siebie przez podaną liczbę poranków. Żołd należy mu się dalej. */
+    public void zranCiezko(int dni) {
+        dniRekonwalescencji = Math.max(dniRekonwalescencji, dni);
+    }
+
+    public boolean czyRanny() {
+        return dniRekonwalescencji > 0;
+    }
+
+    public int getDniRekonwalescencji() {
+        return dniRekonwalescencji;
+    }
+
+    /** Kolejny poranek rekonwalescencji. Zwraca true, gdy potwór właśnie wrócił do sił. */
+    public boolean dochodzDoSiebie() {
+        if (dniRekonwalescencji == 0) {
+            return false;
+        }
+        dniRekonwalescencji--;
+        return dniRekonwalescencji == 0;
+    }
+
     public int getZold() {
         return zold;
     }

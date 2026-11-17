@@ -25,6 +25,9 @@ public class DzienGry implements Serializable {
     public static final int ROZKAZY_NA_DZIEN = 2;
     /** Szansa, że pokonany w walce potwór przeżyje ciężko ranny zamiast zginąć. */
     public static final double SZANSA_PRZEZYCIA = 0.35;
+    /** Ile poranków ciężko ranny dochodzi do siebie: wraca w 3-5 poranek, czyli opuszcza 2-4 dni. */
+    public static final int MIN_PORANKOW_RANNEGO = 2;
+    public static final int MAX_PORANKOW_RANNEGO = 4;
 
     private final int numer;
     private final int dochodBazowy;
@@ -81,8 +84,13 @@ public class DzienGry implements Serializable {
         wyplacPensje(loch, zdarzenia);
         rekrutuj(loch, zdarzenia);
 
+        List<Potwor> wyzdrowiali = loch.getListaPotworow().stream().filter(Potwor::dochodzDoSiebie).toList();
+        if (!wyzdrowiali.isEmpty()) {
+            zdarzenia.add(new Informacja("Po ranach wracają do sił: " + imiona(wyzdrowiali) + ".", Ton.DOBRY));
+        }
         loch.getListaPotworow().forEach(p -> p.setWKopalni(false));
-        List<Potwor> gornicy = loch.getMinisterPracy().wybierzDoKopalni(loch.getListaPotworow(), los);
+        // Ciężko ranni nie kopią i nie walczą: Minister Pracy wybiera górników spośród zdolnych do pracy.
+        List<Potwor> gornicy = loch.getMinisterPracy().wybierzDoKopalni(loch.zdolni(), los);
         gornicy.forEach(p -> p.setWKopalni(true));
         if (!gornicy.isEmpty()) {
             zdarzenia.add(new Informacja("Do kopalni idą: " + imiona(gornicy) + ".", Ton.NEUTRALNY));
@@ -265,6 +273,8 @@ public class DzienGry implements Serializable {
             if (!potwor.czyZyje() && los.nextDouble() < SZANSA_PRZEZYCIA) {
                 // Część pokonanych przeżywa: loch nie traci w jednej walce całej inwestycji.
                 potwor.przezyjRanna();
+                // Liczone w porankach: przez 2-4 dni nie walczy i nie kopie, ale żołd należy mu się dalej.
+                potwor.zranCiezko(MIN_PORANKOW_RANNEGO + los.nextInt(MAX_PORANKOW_RANNEGO - MIN_PORANKOW_RANNEGO + 1));
                 ranni.add(potwor);
             } else if (!potwor.czyZyje()) {
                 polegli.add(potwor);
@@ -277,7 +287,8 @@ public class DzienGry implements Serializable {
             }
         }
         if (!ranni.isEmpty()) {
-            zdarzenia.add(new Informacja("Przeżyli ciężko ranni: " + imiona(ranni) + ".", Ton.NEUTRALNY));
+            zdarzenia.add(new Informacja("Przeżyli ciężko ranni: " + imiona(ranni)
+                    + ". Przez kilka dni nie będą walczyć ani kopać, a bohaterowie wyczują słabość lochu.", Ton.NEUTRALNY));
         }
         if (!polegli.isEmpty()) {
             zdarzenia.add(new Informacja("Polegli w obronie lochu: " + imiona(polegli) + ".", Ton.ZLY));
@@ -314,7 +325,7 @@ public class DzienGry implements Serializable {
         }
 
         MinisterFinansow.WynikWyplaty wynik =
-                loch.getMinisterFinansow().wyplacZold(loch.getSkarbiec(), loch.wojownicy(), los);
+                loch.getMinisterFinansow().wyplacZold(loch.getSkarbiec(), loch.naZoldzie(), los);
         if (!wynik.oplaceni().isEmpty()) {
             zdarzenia.add(new Informacja("Żołd: wypłacono " + wynik.wyplacono() + " złota, opłaconych potworów: "
                     + wynik.oplaceni().size() + ".", Ton.ZLOTO));

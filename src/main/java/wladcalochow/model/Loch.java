@@ -84,8 +84,22 @@ public class Loch implements Serializable {
         listaPotworow.remove(potwor);
     }
 
-    /** Potwory, które dziś nie kopią złota, czyli mogą walczyć i pobierają żołd. */
+    /** Potwory, które dziś walczą: nie kopią złota i nie leżą ranne. */
     public List<Potwor> wojownicy() {
+        return listaPotworow.stream().filter(p -> !p.czyWKopalni() && !p.czyRanny()).toList();
+    }
+
+    /** Potwory zdolne do pracy i walki (bez ciężko rannych). Spośród nich Minister Pracy wybiera górników. */
+    public List<Potwor> zdolni() {
+        return listaPotworow.stream().filter(p -> !p.czyRanny()).toList();
+    }
+
+    public List<Potwor> ranni() {
+        return listaPotworow.stream().filter(Potwor::czyRanny).toList();
+    }
+
+    /** Potwory, którym wieczorem należy się żołd: wszyscy poza górnikami, także ranni. */
+    public List<Potwor> naZoldzie() {
         return listaPotworow.stream().filter(p -> !p.czyWKopalni()).toList();
     }
 

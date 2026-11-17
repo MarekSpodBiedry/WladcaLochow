@@ -79,7 +79,8 @@ public final class GeneratorZdarzen {
         }
         Set<String> zajete = new HashSet<>();
         // Walczą mniej więcej dwie trzecie załogi (reszta kopie).
-        double obrona = DzienGry.wartoscOddzialu(potwory) * 2.0 / 3.0;
+        // Liczą się tylko zdolni do walki i pracy: ranni nie bronią lochu (ale przyciągają bohaterów, patrz niżej).
+        double obrona = DzienGry.wartoscOddzialu(potwory.stream().filter(p -> !p.czyRanny()).toList()) * 2.0 / 3.0;
         double rozwoj = Math.min(1.0, numer / (double) DNI_DO_PELNEJ_GROZY);
         // Po osiągnięciu pełnej grozy rośnie ona dalej, bardzo powoli: nawet najlepszy loch kiedyś trafi na swój limit.
         double pozno = Math.max(0, numer - DNI_DO_PELNEJ_GROZY) * WZROST_GROZY_NA_DZIEN;
@@ -90,7 +91,10 @@ public final class GeneratorZdarzen {
             mnoznik *= SILA_FALI_MIN + (SILA_FALI_MAX - SILA_FALI_MIN) * los.nextDouble();
         }
         double minimum = Math.min(MINIMUM_POZNE, MINIMUM_POCZATKOWE + MINIMUM_NA_DZIEN * numer);
-        double cel = Math.max(minimum, obrona * mnoznik) + zloto / ZLOTO_NA_PUNKT_ZAGROZENIA;
+        // Ranni w lochu przyciągają bohaterów: wieść o słabości szybko się rozchodzi.
+        long ranni = potwory.stream().filter(Potwor::czyRanny).count();
+        double cel = (Math.max(minimum, obrona * mnoznik) + zloto / ZLOTO_NA_PUNKT_ZAGROZENIA)
+                * (1 + RANNI_PRZYCIAGAJA * ranni);
         double hartowanie = Math.min(MAX_HARTOWANIE, HARTOWANIE_NA_DZIEN * (numer - 1));
         int wartosc = 0;
         while (wartosc < cel && bohaterowie.size() < MAX_BOHATEROW) {
@@ -110,8 +114,10 @@ public final class GeneratorZdarzen {
     /** Po tylu dniach groza ataków osiąga pełny poziom względem siły lochu. */
     static final int DNI_DO_PELNEJ_GROZY = 40;
     /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
-    static final double GROZA_POCZATKOWA = 0.40;
-    static final double GROZA_PELNA = 0.90;
+    static final double GROZA_POCZATKOWA = 0.35;
+    static final double GROZA_PELNA = 0.80;
+    /** O ile silniejszy jest atak za każdego ciężko rannego potwora w lochu. */
+    static final double RANNI_PRZYCIAGAJA = 0.06;
     /** O ile rośnie groza z każdym dniem po {@link #DNI_DO_PELNEJ_GROZY}. */
     static final double WZROST_GROZY_NA_DZIEN = 0.0005;
     /** Czasem przychodzi fala: atak dużo silniejszy niż zwykle (pech, na który trzeba mieć zapas). */

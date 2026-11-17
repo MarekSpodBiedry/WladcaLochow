@@ -174,7 +174,10 @@ final class MostClaude {
                     .append(" · poziom ").append(p.getPoziom()).append(" · siła ").append(p.getSilaAtaku())
                     .append(" · życie ").append(p.getPunktyZycia()).append('/').append(p.getMaxPunktyZycia())
                     .append(" · morale ").append(p.getMorale()).append('/').append(p.getMaxMorale())
-                    .append(" · żołd ").append(p.getZold()).append('\n');
+                    .append(" · żołd ").append(p.getZold())
+                    .append(p.czyRanny() ? " · RANNY: nie walczy i nie kopie, wraca za " + p.getDniRekonwalescencji()
+                            + " dni (żołd dalej płatny; zwolnienie rannego obniża morale reszty)" : "")
+                    .append('\n');
         }
     }
 
