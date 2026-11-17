@@ -168,13 +168,25 @@ Rozkazy Władcy:
 |---|---|
 | Ministrowie | zmiana Ministra Finansów lub Pracy; płatna, działa od jutra |
 | Budżet | limit, jaką część skarbca wolno oddać na rekrutację |
-| Postawa | pełna obrona, odwód (słabe morale czeka z tyłu) albo przekupstwo |
+| Postawa | pełna obrona, odwód (zasadzka najlepszych wojowników) albo przekupstwo |
 | Potwory | premia podnosząca morale albo zwolnienie |
 | Ulepszenia | kopalnia, pułapki, zamek skarbca; każde ma 3 poziomy |
 
-Gra nie ma końca: bohaterów przyciąga bogactwo, a z każdym dniem są silniejsi. Loch upada po trzech
-przegranych obronach z rzędu albo gdy nie ma już ani potworów, ani złota. Wynikiem jest liczba
-przetrwanych dni. Gra zapisuje się sama każdego ranka i po każdym rozkazie.
+Najważniejsze zasady:
+
+- **Siła ataku rośnie razem z siłą lochu.** Czasem przychodzi fala, nawet prawie trzy razy silniejsza
+  niż zwykle. Bogaty skarbiec przyciąga dodatkowych bohaterów.
+- **Odwód** to zasadzka: jedna trzecia najlepszych wojowników czeka w ukryciu i uderza, gdy pierwsza
+  linia stopnieje o jedną trzecią. Bohaterowie tracą wtedy ducha, a ich zwiad nie widzi ukrytych.
+- **Łapówki drożeją:** każda kolejna bez walki pomiędzy kosztuje o 50% więcej.
+- **Ranni:** część pokonanych potworów przeżywa ciężko ranna. Przez 1-3 dni nie walczą i nie kopią,
+  ale biorą żołd i przyciągają bohaterów. Wyrzucenie rannego obniża morale całej załogi.
+- **Ministrowie** mają cechę (Negocjator, Lichwiarz, Medyk, Trener, Werbownik, Nadzorca) i wadę
+  (Chciwy, Plotkarz, Niesłowny, Nielojalny). Pensja to stała kwota plus 3% dziennego przychodu.
+
+Gra nie ma końca. Dobrze prowadzony loch może przetrwać setki dni, ale pech i złe decyzje go niszczą.
+Loch upada po trzech przegranych obronach z rzędu albo gdy nie ma już ani potworów, ani złota.
+Wynikiem jest liczba przetrwanych dni. Gra zapisuje się sama każdego ranka i po każdym rozkazie.
 
 Gra ma 10 slotów zapisu i nigdy sama ich nie usuwa. Przegrana rozgrywka zostaje w swoim slocie,
 a „Wczytaj” pozwala obejrzeć jej ostatni dzień. Gdy wszystkie sloty są zajęte, nowa gra pyta,
