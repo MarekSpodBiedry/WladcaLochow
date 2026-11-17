@@ -44,12 +44,16 @@ public final class FabrykaIstot {
         "Baczna Zofia", "Prędki Olek", "Cicha Bogna", "Strzelny Jur"};
     private static final String[] ZLODZIEJE = {"Lepki Staś", "Cień", "Szybki Lolo", "Wytrych", "Kieszonka",
         "Myszka", "Paluch", "Śliski Zenek", "Kocur", "Szmer", "Fant", "Długa Ręka", "Łasica", "Cichy Krok"};
-    private static final String[] MINISTROWIE_FINANSOW = {"Hieronim Skąpiec", "Baron Grosik",
-        "Hrabina Sakiewka", "Onufry Liczykrupa", "Walenty Dukat", "Pani Moneta", "Ignacy Talar",
-        "Zenobiusz Rachmistrz", "Księgowa Brzęczek", "Kanclerz Trzos"};
-    private static final String[] MINISTROWIE_PRACY = {"Sierżant Pięść", "Kapral Młot", "Pan Ziewak",
-        "Ciotka Leniuszka", "Major Twardziel", "Brygadzista Kilof", "Pani Drzemka", "Werbownik Hak",
-        "Dozorca Bat", "Kadrowa Żyleta"};
+    // Każdy styl ministra ma własną pulę imion: to samo imię zawsze oznacza ten sam styl.
+    private static final String[] FINANSE_ZACHOWAWCZY = {"Hieronim Skąpiec", "Baron Grosik", "Pani Moneta",
+        "Onufry Liczykrupa", "Ignacy Talar", "Kanclerz Trzos", "Skarbnik Kłódka", "Wdowa Oszczędna"};
+    private static final String[] FINANSE_ROZRZUTNY = {"Hrabina Sakiewka", "Walenty Dukat",
+        "Zenobiusz Rachmistrz", "Księgowa Brzęczek", "Książę Szastała", "Hulaka Złotko", "Kasztelan Hojny",
+        "Pani Rozrzutka"};
+    private static final String[] PRACA_RAMBO = {"Sierżant Pięść", "Kapral Młot", "Major Twardziel",
+        "Brygadzista Kilof", "Werbownik Hak", "Dozorca Bat", "Kadrowa Żyleta", "Kapitan Stal"};
+    private static final String[] PRACA_BYLEJAKI = {"Pan Ziewak", "Ciotka Leniuszka", "Pani Drzemka",
+        "Wuj Byleco", "Stryj Potem", "Pani Ojtam", "Kuzyn Jakośto", "Pan Niechcemisię"};
 
     private FabrykaIstot() {
     }
@@ -109,7 +113,7 @@ public final class FabrykaIstot {
     }
 
     public static MinisterFinansow ministerFinansow(Random los, boolean zachowawczy, Set<String> zajete) {
-        String imie = imie(MINISTROWIE_FINANSOW, los, zajete);
+        String imie = imie(zachowawczy ? FINANSE_ZACHOWAWCZY : FINANSE_ROZRZUTNY, los, zajete);
         int negocjacjeProcent = zakres(los, 0, 25);
         int pensja = 6 + (int) Math.round(negocjacjeProcent * 0.8) + zakres(los, 0, 6);
         double negocjacje = negocjacjeProcent / 100.0;
@@ -119,7 +123,7 @@ public final class FabrykaIstot {
     }
 
     public static MinisterPracy ministerPracy(Random los, boolean rambo, Set<String> zajete) {
-        String imie = imie(MINISTROWIE_PRACY, los, zajete);
+        String imie = imie(rambo ? PRACA_RAMBO : PRACA_BYLEJAKI, los, zajete);
         int werbunek = zakres(los, 0, 2);
         int nadzorProcent = zakres(los, 0, 25);
         int pensja = 6 + 6 * werbunek + (int) Math.round(nadzorProcent * 0.5) + zakres(los, 0, 6);

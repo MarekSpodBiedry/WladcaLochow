@@ -48,6 +48,28 @@ class ImionaTest {
         }
     }
 
+    /** Jedno imię to zawsze ten sam rodzaj: ministra (styl) i istoty. */
+    @Test
+    void jednoImieToZawszeTenSamRodzaj() {
+        Random los = new Random(2);
+        java.util.Map<String, Class<?>> rodzaje = new java.util.HashMap<>();
+        for (int proba = 0; proba < 2000; proba++) {
+            Set<String> zajete = new HashSet<>();
+            boolean styl = los.nextBoolean();
+            Object[] obiekty = {
+                FabrykaIstot.ministerFinansow(los, styl, zajete), FabrykaIstot.ministerPracy(los, styl, zajete),
+                FabrykaIstot.losowyPotwor(los, zajete), FabrykaIstot.losowyBohater(los, zajete)};
+            for (Object obiekt : obiekty) {
+                String imie = obiekt instanceof Istota istota ? istota.getImie()
+                        : obiekt instanceof wladcalochow.model.MinisterFinansow mf ? mf.getImie()
+                        : ((wladcalochow.model.MinisterPracy) obiekt).getImie();
+                Class<?> poprzedni = rodzaje.putIfAbsent(imie, obiekt.getClass());
+                assertTrue(poprzedni == null || poprzedni == obiekt.getClass(),
+                        () -> imie + " to raz " + poprzedni.getSimpleName() + ", a raz " + obiekt.getClass().getSimpleName());
+            }
+        }
+    }
+
     private static void sprawdz(Istota istota) {
         String imie = istota.getImie();
         assertTrue(imie.length() <= FabrykaIstot.MAX_DLUGOSC_IMIENIA, "za długie imię: " + imie);
