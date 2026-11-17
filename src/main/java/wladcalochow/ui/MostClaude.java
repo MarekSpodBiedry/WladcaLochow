@@ -56,7 +56,7 @@ final class MostClaude {
 
     /** Zapisuje poranny stan gry. Zwraca identyfikator, który musi wrócić w odpowiedzi. */
     String wyslijPoranek(Gra gra) throws IOException {
-        String id = "dzien-" + gra.getNumerDnia() + "-" + Integer.toHexString(los.nextInt(0x10000));
+        String id = "dzien-" + gra.getNumerDnia() + "-" + String.format("%04x", los.nextInt(0x10000));
         StringBuilder s = new StringBuilder();
         s.append("WLADCA LOCHOW: PORANEK DLA CLAUDE'A\n");
         s.append("id: ").append(id).append('\n');
@@ -87,7 +87,7 @@ final class MostClaude {
 
     /** Zapisuje prośbę o wybór startowych ministrów nowej gry. */
     String wyslijStart(Gra gra) throws IOException {
-        String id = "start-" + Integer.toHexString(los.nextInt(0x10000));
+        String id = "start-" + String.format("%04x", los.nextInt(0x10000));
         StringBuilder s = new StringBuilder();
         s.append("WLADCA LOCHOW: NOWA GRA, WYBÓR MINISTRÓW\n");
         s.append("id: ").append(id).append('\n');
