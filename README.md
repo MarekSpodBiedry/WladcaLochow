@@ -9,8 +9,9 @@ loch jest Twój, skarb jest Twój, a bohaterowie to włamywacze.**
 
 ![Walka pod bramą lochu](docs/podglad-walka.png)
 
-Obrazki to podgląd wyrenderowany poza terminalem, z jednej z wcześniejszych wersji; dokładny wygląd
-zależy od czcionki terminala.
+Obrazki to podgląd wyrenderowany poza terminalem; dokładny wygląd zależy od czcionki terminala.
+Odświeża się je poleceniami `mvn test -Dtest=PodgladyEkranuTest -Dpodglady=true`
+i `python narzedzia/zrob-podglady.py`.
 
 ## O co chodzi
 
