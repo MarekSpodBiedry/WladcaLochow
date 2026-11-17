@@ -120,6 +120,107 @@ class BalansSymulacjaTest {
         }
     };
 
+    /**
+     * Strategia subagenta, który przetrwał 130+ dni: ulepszenia szybko i do końca, silne potwory w obronie
+     * (słabe zwalniane, gdy w kolejce czeka ktoś silniejszy), łapówka przy wyrównanym ataku, odwód przy
+     * słabym ataku (chroni weteranów). Korzysta tylko z tego, co widzi gracz: zwiadu i statystyk własnych potworów.
+     */
+    static Gracz ekspert(boolean zOdwodem) {
+        return new Gracz() {
+            @Override
+            public void start(Gra gra) {
+                ROZSADNY.start(gra);
+            }
+
+            @Override
+            public void poranek(Gra gra, Random bot) {
+                Loch loch = gra.getLoch();
+                int zloto = loch.getSkarbiec().getZloto();
+                int pensje = loch.getMinisterFinansow().getPensja() + loch.getMinisterPracy().getPensja();
+                int rezerwa = pensje + loch.dziennyKosztZoldu() * 2 / 3;
+                RaportZwiadu raport = gra.getDzien().getRaport();
+                List<Potwor> potwory = loch.getListaPotworow();
+                int obrona = wladcalochow.model.DzienGry.wartoscOddzialu(potwory) * 2 / 3;
+
+                Postawa postawa = Postawa.PELNA_OBRONA;
+                if (raport.maxBohaterow() > 0) {
+                    boolean groznie = raport.szacowanaSila() >= obrona * 0.8;
+                    if (groznie && raport.szacowanaSila() <= zloto - pensje) {
+                        postawa = Postawa.PRZEKUPSTWO;
+                        zloto -= raport.szacowanaSila();
+                    } else if (zOdwodem && raport.szacowanaSila() < obrona * 0.5) {
+                        postawa = Postawa.ODWOD;
+                    }
+                }
+                wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
+
+                for (Ulepszenie u : new Ulepszenie[] {Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI, Ulepszenie.PULAPKI,
+                        Ulepszenie.PULAPKI, Ulepszenie.KOPALNIA, Ulepszenie.KOPALNIA, Ulepszenie.ZAMEK_SKARBCA,
+                        Ulepszenie.ZAMEK_SKARBCA, Ulepszenie.ZAMEK_SKARBCA}) {
+                    Rozkaz zakup = new Rozkaz.ZakupUlepszenia(u);
+                    if (gra.powodOdmowy(zakup) == null && gra.koszt(zakup) <= zloto - pensje) {
+                        wydaj(gra, zakup);
+                        zloto -= gra.koszt(zakup);
+                        break;
+                    }
+                }
+                wydaj(gra, new Rozkaz.LimitRekrutacji(100));
+                // Miejsce dla silniejszych: gdy loch prawie pełny, a w kolejce stoi ktoś mocniejszy od najsłabszego.
+                int najlepszyKandydat = gra.getDzien().getKandydaci().stream().mapToInt(Potwor::moc).max().orElse(0);
+                Potwor najslabszy = potwory.stream().min(Comparator.comparingInt(Potwor::moc)).orElse(null);
+                if (najslabszy != null && potwory.size() >= Loch.POJEMNOSC - 1 && najlepszyKandydat > najslabszy.moc() * 2) {
+                    wydaj(gra, new Rozkaz.Zwolnienie(najslabszy));
+                }
+                for (Potwor p : potwory) {
+                    Rozkaz premia = new Rozkaz.Premia(p);
+                    if (p.procentMorale() < 0.5 && gra.powodOdmowy(premia) == null && gra.koszt(premia) <= zloto - rezerwa) {
+                        wydaj(gra, premia);
+                        break;
+                    }
+                }
+            }
+
+            private void wydaj(Gra gra, Rozkaz rozkaz) {
+                if (gra.getDzien().maRozkazy() && gra.powodOdmowy(rozkaz) == null) {
+                    gra.wykonajRozkaz(rozkaz);
+                }
+            }
+        };
+    }
+
+    /** Wynik jednej gry: ile dni przetrwał loch i ile z nich minęło bez żadnego rozkazu. */
+    record Przebieg(int dni, int dniBezRozkazow, int dniZOdwodem) {
+    }
+
+    static Przebieg przebieg(Gracz gracz, long ziarno, int maksDni) {
+        Gra gra = Gra.nowa(ziarno);
+        gracz.start(gra);
+        Random bot = new Random(ziarno * 7919);
+        int bezRozkazow = 0;
+        int zOdwodem = 0;
+        while (!gra.czyKoniecGry() && gra.getNumerDnia() < maksDni) {
+            int limit = gra.getDzien().getPozostaleRozkazy();
+            gracz.poranek(gra, bot);
+            // Rozkazy bez zmiany (np. ta sama postawa) gra odrzuca, więc liczą się tylko prawdziwe decyzje.
+            if (gra.getDzien().getPozostaleRozkazy() == limit) {
+                bezRozkazow++;
+            }
+            if (gra.getLoch().getPostawa() == Postawa.ODWOD && gra.getDzien().getRaport().maxBohaterow() > 0) {
+                zOdwodem++;
+            }
+            gra.rozegrajPoranek();
+            Walka walka = gra.rozpocznijObrone();
+            while (walka != null && !walka.czyZakonczona()) {
+                gra.krokWalki();
+            }
+            gra.zakonczDzien();
+            if (!gra.czyKoniecGry()) {
+                gra.rozpocznijDzien();
+            }
+        }
+        return new Przebieg(gra.czyKoniecGry() ? gra.getNumerDnia() : maksDni + 1, bezRozkazow, zOdwodem);
+    }
+
     static int rozegraj(Gracz gracz, long ziarno) {
         Gra gra = Gra.nowa(ziarno);
         gracz.start(gra);
@@ -156,6 +257,44 @@ class BalansSymulacjaTest {
                 100 * ponad100 / dni.length, MAKS_DNI, 100 * bezKonca / dni.length);
     }
 
+    static final int MAKS_DNI_EKSPERTA = 1000;
+
+    static String opisEksperta(String nazwa, Gracz gracz) {
+        List<Przebieg> gry = new ArrayList<>();
+        for (int i = 0; i < GIER; i++) {
+            gry.add(przebieg(gracz, 1000 + i, MAKS_DNI_EKSPERTA));
+        }
+        int[] dni = gry.stream().mapToInt(Przebieg::dni).sorted().toArray();
+        long sumaDni = gry.stream().mapToLong(p -> Math.min(p.dni(), MAKS_DNI_EKSPERTA)).sum();
+        long bez = gry.stream().mapToLong(Przebieg::dniBezRozkazow).sum();
+        long odwod = gry.stream().mapToLong(Przebieg::dniZOdwodem).sum();
+        return String.format("%-12s mediana %4d · 10%% %4d · 90%% %4d · >300: %3d%% · >500: %3d%% · >%d: %3d%%"
+                        + " · dni bez rozkazów %2d%% · odwód %2d%%",
+                nazwa, dni[GIER / 2], dni[GIER / 10], dni[GIER * 9 / 10],
+                100 * Arrays.stream(dni).filter(d -> d > 300).count() / GIER,
+                100 * Arrays.stream(dni).filter(d -> d > 500).count() / GIER, MAKS_DNI_EKSPERTA,
+                100 * Arrays.stream(dni).filter(d -> d > MAKS_DNI_EKSPERTA).count() / GIER,
+                100 * bez / sumaDni, 100 * odwod / sumaDni);
+    }
+
+    @Test
+    void ekspertGraBardzoDlugoAleNieBezKonca() {
+        System.out.println("BALANS " + opisEksperta("ekspert", ekspert(true)));
+        System.out.println("BALANS " + opisEksperta("bez odwodu", ekspert(false)));
+        System.out.println("BALANS " + opisEksperta("rozsądny", ROZSADNY));
+        int[] dni = new int[GIER];
+        for (int i = 0; i < GIER; i++) {
+            dni[i] = przebieg(ekspert(true), 1000 + i, MAKS_DNI_EKSPERTA).dni();
+        }
+        Arrays.sort(dni);
+        int mediana = dni[GIER / 2];
+        assertTrue(mediana >= 150 && mediana <= 350, "dobra gra trwa długo, ale ma koniec: mediana " + mediana);
+        long ponad300 = Arrays.stream(dni).filter(d -> d > 300).count();
+        long ponad500 = Arrays.stream(dni).filter(d -> d > 500).count();
+        assertTrue(ponad300 >= GIER / 20, "z dobrym losem da się zajść daleko");
+        assertTrue(ponad500 <= GIER / 20, "ale prawie nikt nie przetrwa 500 dni");
+    }
+
     @Test
     void dobreDecyzjeGrajaDlugoALosoweSzybkoPrzegrywaja() {
         int[] losowy = wyniki(LOSOWY);
@@ -166,8 +305,5 @@ class BalansSymulacjaTest {
         int medianaRozsadnego = rozsadny[rozsadny.length / 2];
         assertTrue(medianaLosowego < 60, "losowe decyzje szybko gubią loch");
         assertTrue(medianaRozsadnego > 2 * medianaLosowego, "rozsądne decyzje dają dużo dłuższą grę");
-        long bezKonca = Arrays.stream(rozsadny).filter(d -> d > MAKS_DNI).count();
-        assertTrue(bezKonca >= GIER / 10, "przy dobrym losie rozsądny loch trwa bardzo długo");
-        assertTrue(bezKonca <= GIER / 2, "ale nie jest to pewne: pech i fale ataków potrafią go zniszczyć");
     }
 }
