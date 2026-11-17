@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -175,22 +176,27 @@ public final class Uruchamiacz {
     /** Polecenie otwierające na Windows nowe okno PowerShella z instalatorem, który aktualizuje grę. */
     public static List<String> polecenieAktualizacji() {
         return List.of("cmd.exe", "/c", "start", TYTUL, "powershell.exe", "-NoProfile", "-ExecutionPolicy",
-                "Bypass", "-Command", Aktualizacje.POLECENIE_INSTALATORA);
+                "Bypass", "-Command", Aktualizacje.POLECENIE_INSTALATORA_BEZPOSREDNIE);
     }
 
-    /** Uruchamia instalator w nowym oknie. Zwraca true, jeśli udało się go wystartować. */
-    public static boolean uruchomAktualizacje() {
+    /**
+     * Uruchamia instalator w nowym oknie.
+     *
+     * @return pusty wynik, gdy instalator wystartował; w przeciwnym razie powód, który warto pokazać graczowi
+     */
+    public static Optional<String> uruchomAktualizacje() {
         if (wykryjSystem() != SystemOperacyjny.WINDOWS) {
-            return false;
+            return Optional.of("samoczynna aktualizacja działa tylko na Windows");
         }
         try {
             new ProcessBuilder(polecenieAktualizacji())
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();
-            return true;
-        } catch (IOException e) {
-            return false;
+            return Optional.empty();
+        } catch (IOException | RuntimeException e) {
+            // Np. "CreateProcess error=1455": Windowsowi brakuje pamięci, zwykle przez pełny dysk.
+            return Optional.of(String.valueOf(e.getMessage()));
         }
     }
 

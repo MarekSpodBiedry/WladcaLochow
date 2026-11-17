@@ -1,7 +1,7 @@
 # Wladca Lochow - instalator dla Windows.
 #
 # Uzycie (w PowerShellu):
-#   irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex
+#   irm https://msblink.pl/WladcaLochow | iex
 #
 # Co robi:
 #   0. Sprawdzanie Javy    - szuka Javy 21+; gdy jej nie ma, pobiera przenosna Jave do folderu gry

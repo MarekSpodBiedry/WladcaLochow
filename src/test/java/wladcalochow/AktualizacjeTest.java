@@ -36,8 +36,16 @@ class AktualizacjeTest {
         List<String> polecenie = Uruchamiacz.polecenieAktualizacji();
         assertEquals(List.of("cmd.exe", "/c", "start"), polecenie.subList(0, 3));
         assertTrue(polecenie.contains("powershell.exe"));
+        // Przycisk „Aktualizuj” bierze instalator prosto z GitHuba, bez zależności od krótkiego linku.
         assertEquals("irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex",
                 polecenie.get(polecenie.size() - 1));
+    }
+
+    @Test
+    void graczWidziKrotkiLinkZReadme() throws Exception {
+        assertEquals("irm https://msblink.pl/WladcaLochow | iex", Aktualizacje.POLECENIE_INSTALATORA);
+        String readme = java.nio.file.Files.readString(java.nio.file.Path.of("README.md"));
+        assertTrue(readme.contains(Aktualizacje.POLECENIE_INSTALATORA), "README i gra podają to samo polecenie");
     }
 
     @Test

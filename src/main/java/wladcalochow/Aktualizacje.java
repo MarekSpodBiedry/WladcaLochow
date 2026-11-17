@@ -20,8 +20,12 @@ public final class Aktualizacje {
     public static final String STRONA_WYDAN = "https://github.com/" + REPOZYTORIUM + "/releases/latest";
     public static final String ADRES_INSTALATORA =
             "https://raw.githubusercontent.com/" + REPOZYTORIUM + "/main/install.ps1";
-    /** Polecenie PowerShella, które instaluje albo aktualizuje grę na Windows. */
-    public static final String POLECENIE_INSTALATORA = "irm " + ADRES_INSTALATORA + " | iex";
+    /** Krótki adres instalatora (przekierowanie na {@link #ADRES_INSTALATORA}), do pokazywania ludziom. */
+    public static final String KROTKI_ADRES_INSTALATORA = "https://msblink.pl/WladcaLochow";
+    /** Polecenie PowerShella, które instaluje albo aktualizuje grę na Windows: to pokazujemy graczowi. */
+    public static final String POLECENIE_INSTALATORA = "irm " + KROTKI_ADRES_INSTALATORA + " | iex";
+    /** To samo polecenie z pełnym adresem: tego używa przycisk „Aktualizuj”, bez zależności od przekierowania. */
+    public static final String POLECENIE_INSTALATORA_BEZPOSREDNIE = "irm " + ADRES_INSTALATORA + " | iex";
 
     private static final String ADRES_API = "https://api.github.com/repos/" + REPOZYTORIUM + "/releases/latest";
     private static final Pattern TAG = Pattern.compile("\"tag_name\"\\s*:\\s*\"v?(\\d+(?:\\.\\d+)*)\"");

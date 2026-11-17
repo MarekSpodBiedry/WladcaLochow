@@ -44,7 +44,7 @@ class InstalatorTest {
         assertTrue(skrypt.contains("--sprawdz"));
         assertEquals("https://raw.githubusercontent.com/" + Aktualizacje.REPOZYTORIUM + "/main/install.ps1",
                 Aktualizacje.ADRES_INSTALATORA);
-        assertTrue(skrypt.contains("irm " + Aktualizacje.ADRES_INSTALATORA + " | iex"),
-                "nagłówek instalatora podaje to samo polecenie, którego używa gra przy aktualizacji");
+        assertTrue(skrypt.contains(Aktualizacje.POLECENIE_INSTALATORA),
+                "nagłówek instalatora podaje to samo polecenie, które gra pokazuje graczowi");
     }
 }

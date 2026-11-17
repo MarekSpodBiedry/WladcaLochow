@@ -737,15 +737,25 @@ public final class Aplikacja {
      */
     private void aktualizuj() {
         // Instalator startuje tylko z prawdziwej gry, nigdy z testów na sztucznym terminalu.
-        if (terminal instanceof TerminalGry && Uruchamiacz.uruchomAktualizacje()) {
-            wyjdzZGry();
-            return;
+        String blad = null;
+        if (terminal instanceof TerminalGry) {
+            java.util.Optional<String> wynik = Uruchamiacz.uruchomAktualizacje();
+            if (wynik.isEmpty()) {
+                wyjdzZGry();
+                return;
+            }
+            blad = wynik.get();
         }
+        List<String> tresc = new ArrayList<>();
+        if (blad != null) {
+            tresc.add("Nie udało się samemu uruchomić instalatora (" + blad + ").");
+        }
+        tresc.add("Na Windows zamknij grę i wklej do PowerShella:");
+        tresc.add(Aktualizacje.POLECENIE_INSTALATORA);
+        tresc.add("Na innych systemach pobierz nowy wladca-lochow.jar ze strony wydań:");
+        tresc.add(Aktualizacje.STRONA_WYDAN);
         dialog = new Dialog("Nowa wersja " + nowaWersja,
-                List.of("Pobierz nowy plik wladca-lochow.jar ze strony wydań i zastąp nim obecny:",
-                        Aktualizacje.STRONA_WYDAN,
-                        "Na Windows wystarczy wkleić do PowerShella:",
-                        Aktualizacje.POLECENIE_INSTALATORA),
+                tresc,
                 List.of(new Dialog.Opcja("Zamknij", "Wróć do menu.", true, this::zamknijDialog)),
                 this::zamknijDialog);
     }
