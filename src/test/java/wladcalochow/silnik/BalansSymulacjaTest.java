@@ -125,11 +125,58 @@ class BalansSymulacjaTest {
      * (słabe zwalniane, gdy w kolejce czeka ktoś silniejszy), łapówka przy wyrównanym ataku, odwód przy
      * słabym ataku (chroni weteranów). Korzysta tylko z tego, co widzi gracz: zwiadu i statystyk własnych potworów.
      */
+    /** Ocena cechy i wady ministra z punktu widzenia doświadczonego gracza (bez liczenia przyszłości). */
+    static int ocena(wladcalochow.model.strategia.CechaMinistra cecha, wladcalochow.model.strategia.WadaMinistra wada) {
+        int punkty = cecha == null ? 0 : switch (cecha) {
+            case NEGOCJATOR, MEDYK -> 3;
+            case NADZORCA, LICHWIARZ -> 2;
+            case TRENER, WERBOWNIK -> 1;
+        };
+        return punkty - (wada == null ? 0 : switch (wada) {
+            case PLOTKARZ -> 3;
+            case NIELOJALNY -> 2;
+            case CHCIWY, NIESLOWNY -> 1;
+        });
+    }
+
     static Gracz ekspert(boolean zOdwodem) {
         return new Gracz() {
             @Override
             public void start(Gra gra) {
-                ROZSADNY.start(gra);
+                MinisterFinansow finansow = gra.getStartowiFinansow().stream()
+                        .filter(m -> m instanceof RozrzutnyMinisterFinansow)
+                        .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
+                        .orElse(gra.getStartowiFinansow().get(0));
+                MinisterPracy pracy = gra.getStartowiPracy().stream()
+                        .filter(m -> m instanceof RamboMinisterPracy)
+                        .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
+                        .orElse(gra.getStartowiPracy().get(0));
+                gra.rozpocznij(finansow, pracy);
+            }
+
+            /** Wymiana ministra, gdy kandydat tego samego stylu ma wyraźnie lepszą cechę i wadę. */
+            private void wymienMinistra(Gra gra, int wolneZloto) {
+                Loch loch = gra.getLoch();
+                MinisterFinansow mf = loch.getMinisterFinansow();
+                for (MinisterFinansow k : gra.getDzien().getKandydaciFinansow()) {
+                    Rozkaz r = new Rozkaz.ZmianaMinistraFinansow(k);
+                    if (k instanceof RozrzutnyMinisterFinansow && gra.getNastepnyMinisterFinansow() == null
+                            && ocena(k.getCecha(), k.getWada()) >= ocena(mf.getCecha(), mf.getWada()) + 2
+                            && gra.koszt(r) <= wolneZloto) {
+                        wydaj(gra, r);
+                        return;
+                    }
+                }
+                MinisterPracy mp = loch.getMinisterPracy();
+                for (MinisterPracy k : gra.getDzien().getKandydaciPracy()) {
+                    Rozkaz r = new Rozkaz.ZmianaMinistraPracy(k);
+                    if (k instanceof RamboMinisterPracy && gra.getNastepnyMinisterPracy() == null
+                            && ocena(k.getCecha(), k.getWada()) >= ocena(mp.getCecha(), mp.getWada()) + 2
+                            && gra.koszt(r) <= wolneZloto) {
+                        wydaj(gra, r);
+                        return;
+                    }
+                }
             }
 
             @Override
@@ -165,6 +212,7 @@ class BalansSymulacjaTest {
                     }
                 }
                 wydaj(gra, new Rozkaz.LimitRekrutacji(100));
+                wymienMinistra(gra, zloto - rezerwa);
                 // Miejsce dla silniejszych: gdy loch prawie pełny, a w kolejce stoi ktoś mocniejszy od najsłabszego.
                 int najlepszyKandydat = gra.getDzien().getKandydaci().stream().mapToInt(Potwor::moc).max().orElse(0);
                 Potwor najslabszy = potwory.stream().min(Comparator.comparingInt(Potwor::moc)).orElse(null);
