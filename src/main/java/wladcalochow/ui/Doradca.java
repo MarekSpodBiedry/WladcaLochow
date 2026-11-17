@@ -26,8 +26,8 @@ final class Doradca {
                             + "Wymienić ministra? A może zapłacić bohaterom, żeby sobie poszli?",
                     "Potem loch pracuje: wpływa złoto, ministrowie zatrudniają potwory i wysyłają co trzeciego "
                             + "do kopalni.",
-                    "Jeśli przyjdą bohaterowie, potwory stają pod bramą. Walkę oglądasz ruch po ruchu "
-                            + "albo przewijasz do końca.",
+                    "Jeśli przyjdą bohaterowie, potwory stają pod bramą, a walka toczy się sama. Możesz ją "
+                            + "przewinąć do końca albo oglądać ruch po ruchu.",
                     "Wieczorem płacisz żołd i dostajesz rachunek: ile złota przyszło, na co poszło "
                             + "i kto nie dożył wieczora.")),
             new Strona("Dlaczego warto", List.of(
@@ -74,27 +74,27 @@ final class Doradca {
             case 1 -> List.of(
                     "Witaj w lochu, Władco! Na górze ekranu widzisz numer dnia i złoto w skarbcu. "
                             + "Po prawej są Twoi ministrowie i potwory.",
-                    "Dziś niczego nie musisz decydować. Naciśnij Enter albo kliknij zielony przycisk, "
+                    "Dziś niczego nie musisz decydować. Naciśnij **Enter** albo kliknij zielony przycisk, "
                             + "a dzień rozegra się sam. Popatrz, co się wydarzy.");
             case 2 -> List.of(
-                    "Nowość: Ulepszenia (klawisz U). Masz dziś 1 rozkaz, czyli jedną decyzję.",
+                    "Nowość: **Ulepszenia** (klawisz U). Masz dziś **1 rozkaz**, czyli jedną decyzję.",
                     "Kopalnia daje więcej złota, pułapki ranią bohaterów, a zamek chroni skarbiec "
                             + "przed kradzieżą. Rozkazu nie trzeba wykorzystać: złoto przyda się też na żołd.");
             case 3 -> List.of(
                     "Dziś pierwszy atak! Zwiad melduje jednego rycerza. Twoje potwory poradzą sobie z nim same.",
-                    "Nowość: Postawa (klawisz P). Decyduje, jak loch reaguje na atak: pełna obrona, odwód "
-                            + "dla potworów z niskim morale albo przekupienie bohaterów. Dziś wystarczy pełna obrona.");
+                    "Nowość: **Postawa** (klawisz P). Decyduje, jak loch reaguje na atak: pełna obrona, odwód "
+                            + "(najlepsi czekają w zasadzce) albo przekupienie bohaterów. Dziś wystarczy pełna obrona.");
             case 4 -> List.of(
-                    "Nowości: Potwory (O) i Budżet (B).",
+                    "Nowości: **Potwory** (O) i **Budżet** (B).",
                     "Potworowi możesz dać premię, żeby podnieść morale, albo go zwolnić, żeby nie płacić żołdu. "
                             + "Budżet ogranicza, ile złota minister wyda na nowe potwory.",
                     "Uwaga: bogactwo przyciąga bohaterów. Im więcej złota w skarbcu i im późniejszy dzień, "
                             + "tym silniejszy atak.");
             case 5 -> List.of(
-                    "Ostatnia nowość: Ministrowie (M). Codziennie zgłaszają się nowi kandydaci. "
+                    "Ostatnia nowość: **Ministrowie** (M). Codziennie zgłaszają się nowi kandydaci. "
                             + "Wymiana kosztuje i działa od jutra.",
-                    "Od dziś masz 2 rozkazy dziennie i wszystkie możliwości. To koniec samouczka. "
-                            + "Pomoc jest zawsze pod klawiszem H. Powodzenia!");
+                    "Od dziś masz **2 rozkazy** dziennie i wszystkie możliwości. To koniec samouczka. "
+                            + "Pomoc jest zawsze pod klawiszem **H**. Powodzenia!");
             default -> List.of();
         };
     }
@@ -103,8 +103,8 @@ final class Doradca {
     static List<String> walka() {
         return List.of(
                 "To jest walka. Bohaterowie stoją po lewej, Twoi obrońcy po prawej, przed bramą.",
-                "Walka toczy się sama. A wyłącza automat: wtedy Enter wykonuje ruch jednej postaci. "
-                        + "F przewija walkę do końca.",
+                "Walka toczy się sama. **A** wyłącza automat: wtedy **Enter** wykonuje ruch jednej postaci. "
+                        + "**F** przewija walkę do końca.",
                 "♥ to życie, ☻ to morale. Każde trafienie obniża morale; kto je straci, ucieka z pola walki.");
     }
 
