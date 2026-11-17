@@ -126,7 +126,8 @@ public class Loch implements Serializable {
 
     /** Mnożnik wydobycia: nadzór Ministra Pracy i poziom kopalni. */
     public double mnoznikWydobycia() {
-        return 1.0 + ministerPracy.getNadzorKopalni() + 0.25 * poziom(Ulepszenie.KOPALNIA);
+        return 1.0 + ministerPracy.getNadzorKopalni() + 0.25 * poziom(Ulepszenie.KOPALNIA)
+                + (ministerPracy.ma(wladcalochow.model.strategia.CechaMinistra.NADZORCA) ? 0.25 : 0);
     }
 
     /** Mnożnik szansy kradzieży i wielkości łupu: im lepszy zamek, tym mniejszy. */

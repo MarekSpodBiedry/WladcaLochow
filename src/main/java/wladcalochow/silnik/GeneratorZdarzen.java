@@ -11,8 +11,10 @@ import wladcalochow.model.Loch;
 import wladcalochow.model.MinisterFinansow;
 import wladcalochow.model.MinisterPracy;
 import wladcalochow.model.Potwor;
+import wladcalochow.model.strategia.CechaMinistra;
 import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.RaportZwiadu;
+import wladcalochow.model.strategia.WadaMinistra;
 
 /** Losuje to, co przynosi kolejny dzień. Trudność rośnie z numerem dnia i bogactwem skarbca. */
 public final class GeneratorZdarzen {
@@ -43,8 +45,9 @@ public final class GeneratorZdarzen {
             int ilu = 2 + los.nextInt(3) + loch.getMinisterPracy().getWerbunek();
             Set<String> zajete = new HashSet<>();
             loch.getListaPotworow().forEach(p -> zajete.add(p.getImie()));
+            boolean werbownik = loch.getMinisterPracy().ma(CechaMinistra.WERBOWNIK);
             for (int i = 0; i < ilu; i++) {
-                kandydaci.add(FabrykaIstot.losowyPotwor(los, zajete));
+                kandydaci.add(FabrykaIstot.losowyPotwor(los, zajete, werbownik));
             }
         }
 
@@ -55,9 +58,14 @@ public final class GeneratorZdarzen {
             bohaterowie = List.of(giermek);
             raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
         } else {
+            // Plotkarz rozpowiada o lochu: ataki są silniejsze.
+            boolean plotkarz = loch.getMinisterFinansow().ma(WadaMinistra.PLOTKARZ)
+                    || loch.getMinisterPracy().ma(WadaMinistra.PLOTKARZ);
             bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(),
-                    loch.getPostawa() == Postawa.ODWOD, los);
-            raport = zwiad(bohaterowie, los, loch.mnoznikLapowki());
+                    loch.getPostawa() == Postawa.ODWOD, plotkarz ? 1 + PLOTKI : 1, los);
+            boolean nieslowny = loch.getMinisterFinansow().ma(WadaMinistra.NIESLOWNY)
+                    || loch.getMinisterPracy().ma(WadaMinistra.NIESLOWNY);
+            raport = zwiad(bohaterowie, los, loch.mnoznikLapowki(), nieslowny);
         }
         Set<String> ministrowie = new HashSet<>();
         ministrowie.add(loch.getMinisterFinansow().getImie());
@@ -75,14 +83,15 @@ public final class GeneratorZdarzen {
      * Dzięki temu dobrze prowadzony loch może trwać bez końca, ale pech i złe decyzje go niszczą.
      */
     static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, Random los) {
-        return losujBohaterow(numer, zloto, potwory, false, los);
+        return losujBohaterow(numer, zloto, potwory, false, 1.0, los);
     }
 
     /**
      * Jak wyżej. Gdy loch stoi w postawie Odwód, zwiad bohaterów nie widzi ukrytych wojowników: loch wygląda
      * na słabszy i przyciąga mniejszy atak (ceną jest słabsza pierwsza linia w walce).
      */
-    static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, boolean ukrytyOdwod, Random los) {
+    static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, boolean ukrytyOdwod,
+                                        double mnoznikGrozy, Random los) {
         List<Bohater> bohaterowie = new ArrayList<>();
         if (numer <= DNI_SPOKOJU || los.nextDouble() < 0.20) {
             return bohaterowie;
@@ -105,7 +114,7 @@ public final class GeneratorZdarzen {
         // Ranni w lochu przyciągają bohaterów: wieść o słabości szybko się rozchodzi.
         long ranni = potwory.stream().filter(Potwor::czyRanny).count();
         double cel = (Math.max(minimum, obrona * mnoznik) + zloto / ZLOTO_NA_PUNKT_ZAGROZENIA)
-                * (1 + RANNI_PRZYCIAGAJA * ranni);
+                * (1 + RANNI_PRZYCIAGAJA * ranni) * mnoznikGrozy;
         double hartowanie = Math.min(MAX_HARTOWANIE, HARTOWANIE_NA_DZIEN * (numer - 1));
         int wartosc = 0;
         while (wartosc < cel && bohaterowie.size() < MAX_BOHATEROW) {
@@ -127,6 +136,8 @@ public final class GeneratorZdarzen {
     /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
     static final double GROZA_POCZATKOWA = 0.35;
     static final double GROZA_PELNA = 0.80;
+    /** O ile silniejsze są ataki, gdy któryś minister jest plotkarzem. */
+    static final double PLOTKI = 0.10;
     /** Jaką część siły obrońców ukrywa przed zwiadem bohaterów postawa Odwód. */
     static final double ODWOD_UKRYWA = 0.25;
     /** O ile silniejszy jest atak za każdego ciężko rannego potwora w lochu. */
@@ -148,17 +159,20 @@ public final class GeneratorZdarzen {
     static final double MAX_HARTOWANIE = 0.40;
 
     /** Zwiad nie jest dokładny: podaje przedział liczebności, czasem jeden rodzaj i szacunek łapówki. */
-    static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los, double mnoznikLapowki) {
+    static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los, double mnoznikLapowki, boolean nieslowny) {
+        // Niesłowny minister przekazuje raport byle jak: szersze widełki, bez rodzaju, mniej dokładna cena.
         int ilu = bohaterowie.size();
-        int min = Math.max(0, ilu - los.nextInt(2));
-        int max = ilu + los.nextInt(2);
+        int rozrzut = nieslowny ? 4 : 2;
+        int min = Math.max(0, ilu - los.nextInt(rozrzut));
+        int max = ilu + los.nextInt(rozrzut);
         String rodzaj = null;
         int szacunek = 0;
         if (ilu > 0) {
             if (los.nextDouble() < 0.70) {
-                rodzaj = bohaterowie.get(los.nextInt(ilu)).nazwaRodzaju();
+                rodzaj = nieslowny ? null : bohaterowie.get(los.nextInt(ilu)).nazwaRodzaju();
             }
-            szacunek = (int) Math.round(DzienGry.wartoscOddzialu(bohaterowie) * mnoznikLapowki * (0.8 + 0.4 * los.nextDouble()));
+            double blad = nieslowny ? 0.6 + 0.8 * los.nextDouble() : 0.8 + 0.4 * los.nextDouble();
+            szacunek = (int) Math.round(DzienGry.wartoscOddzialu(bohaterowie) * mnoznikLapowki * blad);
             min = Math.max(1, min);
         }
         return new RaportZwiadu(min, max, rodzaj, szacunek);

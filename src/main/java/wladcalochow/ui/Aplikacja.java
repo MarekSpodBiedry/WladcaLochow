@@ -22,10 +22,12 @@ import wladcalochow.model.MinisterPracy;
 import wladcalochow.model.Potwor;
 import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
+import wladcalochow.model.strategia.CechaMinistra;
 import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
+import wladcalochow.model.strategia.WadaMinistra;
 import wladcalochow.silnik.Gra;
 import wladcalochow.silnik.ZapisGry;
 
@@ -897,7 +899,8 @@ public final class Aplikacja {
         for (MinisterFinansow kandydat : kandydaciStartowi(gra.getStartowiFinansow())) {
             opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
                     + kandydat.getPensja() + " · zniżki " + procent(kandydat.getNegocjacje()) + "%",
-                    kandydat.opisStylu(), true, () -> wybierzMinistraPracy(kandydat)));
+                    kandydat.opisStylu() + cechy(kandydat.getCecha(), kandydat.getWada()), true,
+                    () -> wybierzMinistraPracy(kandydat)));
         }
         dialog = new Dialog("Wybierz Ministra Finansów",
                 List.of("Minister Finansów pilnuje złota: decyduje, ile wydać na nowe potwory, i wypłaca żołd. "
@@ -912,7 +915,7 @@ public final class Aplikacja {
             opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
                     + kandydat.getPensja() + " · werbunek +" + kandydat.getWerbunek() + " · kopalnia +"
                     + procent(kandydat.getNadzorKopalni()) + "%",
-                    kandydat.opisStylu(), true, () -> {
+                    kandydat.opisStylu() + cechy(kandydat.getCecha(), kandydat.getWada()), true, () -> {
                         gra.rozpocznij(finansow, kandydat);
                         dialog = null;
                         tryb = Tryb.PORANEK;
@@ -1450,12 +1453,29 @@ public final class Aplikacja {
     }
 
     private static String statystyki(MinisterFinansow minister) {
-        return "Pensja " + minister.getPensja() + ", zniżki " + procent(minister.getNegocjacje()) + "%.";
+        return "Pensja " + pensja(minister.getPensja(), minister.ma(WadaMinistra.CHCIWY)) + ", zniżki "
+                + procent(minister.getNegocjacje()) + "%." + cechy(minister.getCecha(), minister.getWada());
     }
 
     private static String statystyki(MinisterPracy minister) {
-        return "Pensja " + minister.getPensja() + ", werbunek +" + minister.getWerbunek() + ", kopalnia +"
-                + procent(minister.getNadzorKopalni()) + "%.";
+        return "Pensja " + pensja(minister.getPensja(), minister.ma(WadaMinistra.CHCIWY)) + ", werbunek +"
+                + minister.getWerbunek() + ", kopalnia +" + procent(minister.getNadzorKopalni()) + "%."
+                + cechy(minister.getCecha(), minister.getWada());
+    }
+
+    /** Pensja: stała część plus udział w dziennym przychodzie lochu (większy u chciwego). */
+    static String pensja(int stala, boolean chciwy) {
+        if (stala == 0) {
+            return "0";
+        }
+        double udzial = MinisterFinansow.UDZIAL_W_PRZYCHODZIE + (chciwy ? MinisterFinansow.UDZIAL_CHCIWEGO : 0);
+        return stala + " + " + procent(udzial) + "% przychodu";
+    }
+
+    /** Cecha i wada ministra jednym zdaniem (puste, gdy minister ich nie ma, np. stażysta). */
+    static String cechy(CechaMinistra cecha, WadaMinistra wada) {
+        return (cecha == null ? "" : " Cecha: " + cecha.nazwa() + " (" + cecha.opis() + ")")
+                + (wada == null ? "" : " Wada: " + wada.nazwa() + " (" + wada.opis() + ")");
     }
 
     private void dialogBudzet() {

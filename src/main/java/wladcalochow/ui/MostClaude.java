@@ -20,6 +20,7 @@ import wladcalochow.model.Potwor;
 import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
+import wladcalochow.model.strategia.WadaMinistra;
 import wladcalochow.silnik.Gra;
 
 /**
@@ -182,13 +183,15 @@ final class MostClaude {
     }
 
     private static String opis(MinisterFinansow m) {
-        return m.getImie() + " · " + m.nazwaRodzaju() + " · " + m.opisStylu() + " Pensja " + m.getPensja()
-                + ", zniżki " + Math.round(m.getNegocjacje() * 100) + "%.";
+        return m.getImie() + " · " + m.nazwaRodzaju() + " · " + m.opisStylu() + " Pensja "
+                + Aplikacja.pensja(m.getPensja(), m.ma(WadaMinistra.CHCIWY)) + ", zniżki "
+                + Math.round(m.getNegocjacje() * 100) + "%." + Aplikacja.cechy(m.getCecha(), m.getWada());
     }
 
     private static String opis(MinisterPracy m) {
-        return m.getImie() + " · " + m.nazwaRodzaju() + " · " + m.opisStylu() + " Pensja " + m.getPensja()
-                + ", werbunek +" + m.getWerbunek() + ", kopalnia +" + Math.round(m.getNadzorKopalni() * 100) + "%.";
+        return m.getImie() + " · " + m.nazwaRodzaju() + " · " + m.opisStylu() + " Pensja "
+                + Aplikacja.pensja(m.getPensja(), m.ma(WadaMinistra.CHCIWY)) + ", werbunek +" + m.getWerbunek()
+                + ", kopalnia +" + Math.round(m.getNadzorKopalni() * 100) + "%." + Aplikacja.cechy(m.getCecha(), m.getWada());
     }
 
     /** Wpisy dziennika od początku wczorajszego dnia (to, co gracz widzi na ekranie). */

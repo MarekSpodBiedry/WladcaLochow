@@ -18,6 +18,8 @@ import wladcalochow.model.RozrzutnyMinisterFinansow;
 import wladcalochow.model.Rycerz;
 import wladcalochow.model.ZachowawczyMinisterFinansow;
 import wladcalochow.model.Zlodziej;
+import wladcalochow.model.strategia.CechaMinistra;
+import wladcalochow.model.strategia.WadaMinistra;
 
 /** Jedyne miejsce, w którym powstają istoty i ministrowie. Każdy obiekt jest nowy i unikatowy. */
 public final class FabrykaIstot {
@@ -59,11 +61,31 @@ public final class FabrykaIstot {
     }
 
     public static Potwor losowyPotwor(Random los, Set<String> zajete) {
+        return losowyPotwor(los, zajete, false);
+    }
+
+    /** Losowy kandydat. U Werbownika ogry trafiają się dwa razy częściej (40% zamiast 20%). */
+    public static Potwor losowyPotwor(Random los, Set<String> zajete, boolean werbownik) {
         double rzut = los.nextDouble();
-        if (rzut < 0.45) {
+        if (rzut < (werbownik ? 0.35 : 0.45)) {
             return goblin(los, zajete);
         }
-        return rzut < 0.80 ? ork(los, zajete) : ogr(los, zajete);
+        return rzut < (werbownik ? 0.60 : 0.80) ? ork(los, zajete) : ogr(los, zajete);
+    }
+
+    /** Każdy minister ma jedną cechę pasującą do swojego urzędu i jedną wadę. */
+    private static CechaMinistra losowaCecha(Random los, boolean finansowa) {
+        List<CechaMinistra> pasujace = new ArrayList<>();
+        for (CechaMinistra cecha : CechaMinistra.values()) {
+            if (cecha.finansowa() == finansowa) {
+                pasujace.add(cecha);
+            }
+        }
+        return pasujace.get(los.nextInt(pasujace.size()));
+    }
+
+    private static WadaMinistra losowaWada(Random los) {
+        return WadaMinistra.values()[los.nextInt(WadaMinistra.values().length)];
     }
 
     public static Goblin goblin(Random los, Set<String> zajete) {
@@ -118,8 +140,8 @@ public final class FabrykaIstot {
         int pensja = 6 + (int) Math.round(negocjacjeProcent * 0.8) + zakres(los, 0, 6);
         double negocjacje = negocjacjeProcent / 100.0;
         return zachowawczy
-                ? new ZachowawczyMinisterFinansow(imie, pensja, negocjacje)
-                : new RozrzutnyMinisterFinansow(imie, pensja, negocjacje);
+                ? new ZachowawczyMinisterFinansow(imie, pensja, negocjacje).zCecha(losowaCecha(los, true), losowaWada(los))
+                : new RozrzutnyMinisterFinansow(imie, pensja, negocjacje).zCecha(losowaCecha(los, true), losowaWada(los));
     }
 
     public static MinisterPracy ministerPracy(Random los, boolean rambo, Set<String> zajete) {
@@ -129,8 +151,8 @@ public final class FabrykaIstot {
         int pensja = 6 + 6 * werbunek + (int) Math.round(nadzorProcent * 0.5) + zakres(los, 0, 6);
         double nadzor = nadzorProcent / 100.0;
         return rambo
-                ? new RamboMinisterPracy(imie, pensja, werbunek, nadzor)
-                : new BylejakiMinisterPracy(imie, pensja, werbunek, nadzor);
+                ? new RamboMinisterPracy(imie, pensja, werbunek, nadzor).zCecha(losowaCecha(los, false), losowaWada(los))
+                : new BylejakiMinisterPracy(imie, pensja, werbunek, nadzor).zCecha(losowaCecha(los, false), losowaWada(los));
     }
 
     /** Żołd rośnie razem z siłą i zdrowiem potwora. */

@@ -70,7 +70,12 @@ public abstract class Potwor extends Istota {
 
     /** Po przeżytej walce potwór zdobywa doświadczenie. Zwraca true, jeśli awansował. */
     public boolean podsumujWalke() {
-        int zdobyte = 1 + doswiadczenieZWalki;
+        return podsumujWalke(false);
+    }
+
+    /** Jak wyżej; pod okiem Trenera potwór zdobywa dwa razy więcej doświadczenia. */
+    public boolean podsumujWalke(boolean trener) {
+        int zdobyte = (1 + doswiadczenieZWalki) * (trener ? 2 : 1);
         doswiadczenieZWalki = 0;
         doswiadczenie += zdobyte;
         boolean awans = false;

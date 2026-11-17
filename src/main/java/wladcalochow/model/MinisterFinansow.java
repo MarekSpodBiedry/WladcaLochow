@@ -68,6 +68,47 @@ public abstract class MinisterFinansow implements Serializable {
         return new WynikWyplaty(suma, oplaceni, nieoplaceni, odeszli);
     }
 
+    /** Jaką część dziennego przychodu lochu każdy minister dolicza do stałej pensji. */
+    public static final double UDZIAL_W_PRZYCHODZIE = 0.03;
+    /** Ile dodatkowo bierze minister chciwy. */
+    public static final double UDZIAL_CHCIWEGO = 0.05;
+
+    private wladcalochow.model.strategia.CechaMinistra cecha;
+    private wladcalochow.model.strategia.WadaMinistra wada;
+
+    /** Nadaje ministrowi cechę i wadę. Zwraca tego samego ministra. */
+    public MinisterFinansow zCecha(wladcalochow.model.strategia.CechaMinistra cecha,
+                                   wladcalochow.model.strategia.WadaMinistra wada) {
+        this.cecha = cecha;
+        this.wada = wada;
+        return this;
+    }
+
+    public wladcalochow.model.strategia.CechaMinistra getCecha() {
+        return cecha;
+    }
+
+    public wladcalochow.model.strategia.WadaMinistra getWada() {
+        return wada;
+    }
+
+    public boolean ma(wladcalochow.model.strategia.CechaMinistra c) {
+        return cecha == c;
+    }
+
+    public boolean ma(wladcalochow.model.strategia.WadaMinistra w) {
+        return wada == w;
+    }
+
+    /** Pensja na dziś: stała część plus udział w dzisiejszym przychodzie (większy u chciwego). */
+    public int pensjaDnia(int przychodDnia) {
+        if (pensja == 0) {
+            return 0;  // darmowy stażysta
+        }
+        double udzial = UDZIAL_W_PRZYCHODZIE + (ma(wladcalochow.model.strategia.WadaMinistra.CHCIWY) ? UDZIAL_CHCIWEGO : 0);
+        return pensja + (int) Math.round(Math.max(0, przychodDnia) * udzial);
+    }
+
     public String getImie() {
         return imie;
     }

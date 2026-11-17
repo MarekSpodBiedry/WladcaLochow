@@ -8,9 +8,11 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import wladcalochow.model.Zdarzenie.Informacja;
 import wladcalochow.model.Zdarzenie.Ton;
+import wladcalochow.model.strategia.CechaMinistra;
 import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.RaportZwiadu;
 import wladcalochow.model.strategia.Ulepszenie;
+import wladcalochow.model.strategia.WadaMinistra;
 
 /**
  * Jeden dzień gry. Przechowuje to, co dany dzień przynosi (dochód, kandydaci, bohaterowie),
@@ -70,21 +72,52 @@ public class DzienGry implements Serializable {
             return List.of();
         }
         przychodPrzyjety = true;
+        List<Zdarzenie> zdarzenia = new ArrayList<>();
+        if (loch.getMinisterFinansow().ma(CechaMinistra.LICHWIARZ)) {
+            int odsetki = Math.min(MAX_ODSETEK, (int) Math.round(loch.getSkarbiec().getZloto() * ODSETKI));
+            if (odsetki > 0) {
+                loch.getSkarbiec().wplac(odsetki);
+                bilans.przychod(odsetki, 0);
+                zdarzenia.add(new Informacja("Lichwiarz " + loch.getMinisterFinansow().getImie() + " pomnaża skarbiec: +"
+                        + odsetki + " złota odsetek.", Ton.ZLOTO));
+            }
+        }
         int wydobycie = loch.odbierzWydobycie();
         loch.getSkarbiec().wplac(dochodBazowy + wydobycie);
         bilans.przychod(dochodBazowy, wydobycie);
-        return List.of(new Informacja("Przypływ złota: +" + (dochodBazowy + wydobycie)
+        zdarzenia.add(new Informacja("Przypływ złota: +" + (dochodBazowy + wydobycie)
                 + " (dochód " + dochodBazowy + ", kopalnia " + wydobycie + ").", Ton.ZLOTO));
+        return zdarzenia;
     }
+
+    /** Odsetki Lichwiarza: część skarbca dziennie, najwyżej {@value #MAX_ODSETEK} złota. */
+    public static final double ODSETKI = 0.02;
+    /** O ile tańsze są łapówki u Negocjatora. */
+    public static final double RABAT_NEGOCJATORA = 0.25;
+    public static final int MAX_ODSETEK = 150;
+    /** Dzienna szansa, że minister nielojalny odejdzie bez ostrzeżenia. */
+    public static final double SZANSA_ODEJSCIA_NIELOJALNEGO = 0.03;
 
     public List<Zdarzenie> rozegrajPoranek(Loch loch, Random los) {
         wymagaj(Faza.PORANEK);
         List<Zdarzenie> zdarzenia = new ArrayList<>(przyjmijPrzychod(loch));
 
+        odejsciaNielojalnych(loch, los, zdarzenia);
         wyplacPensje(loch, zdarzenia);
         rekrutuj(loch, zdarzenia);
 
-        List<Potwor> wyzdrowiali = loch.getListaPotworow().stream().filter(Potwor::dochodzDoSiebie).toList();
+        boolean medyk = loch.getMinisterPracy().ma(CechaMinistra.MEDYK);
+        List<Potwor> wyzdrowiali = new ArrayList<>();
+        for (Potwor potwor : loch.getListaPotworow()) {
+            // Medyk stawia rannych na nogi dwa razy szybciej: dwa poranki rekonwalescencji w jeden.
+            boolean wrocil = potwor.dochodzDoSiebie();
+            if (!wrocil && medyk) {
+                wrocil = potwor.dochodzDoSiebie();
+            }
+            if (wrocil) {
+                wyzdrowiali.add(potwor);
+            }
+        }
         if (!wyzdrowiali.isEmpty()) {
             zdarzenia.add(new Informacja("Po ranach wracają do sił: " + imiona(wyzdrowiali) + ".", Ton.DOBRY));
         }
@@ -99,19 +132,34 @@ public class DzienGry implements Serializable {
         return zdarzenia;
     }
 
+    private void odejsciaNielojalnych(Loch loch, Random los, List<Zdarzenie> zdarzenia) {
+        if (loch.getMinisterFinansow().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
+            zdarzenia.add(new Informacja(loch.getMinisterFinansow().getImie() + " znika bez słowa (nielojalny). "
+                    + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
+            loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
+        }
+        if (loch.getMinisterPracy().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
+            zdarzenia.add(new Informacja(loch.getMinisterPracy().getImie() + " znika bez słowa (nielojalny). "
+                    + "Kadry przejmuje darmowa stażystka.", Ton.ZLY));
+            loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
+        }
+    }
+
     private void wyplacPensje(Loch loch, List<Zdarzenie> zdarzenia) {
         Skarbiec skarbiec = loch.getSkarbiec();
         MinisterFinansow finansow = loch.getMinisterFinansow();
-        if (skarbiec.wyplac(finansow.getPensja())) {
-            bilans.pensja(finansow.getPensja());
+        int pensjaFinansow = finansow.pensjaDnia(bilans.przychody());
+        if (skarbiec.wyplac(pensjaFinansow)) {
+            bilans.pensja(pensjaFinansow);
         } else {
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + finansow.getImie() + " odchodzi. "
                     + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
         }
         MinisterPracy pracy = loch.getMinisterPracy();
-        if (skarbiec.wyplac(pracy.getPensja())) {
-            bilans.pensja(pracy.getPensja());
+        int pensjaPracy = pracy.pensjaDnia(bilans.przychody());
+        if (skarbiec.wyplac(pensjaPracy)) {
+            bilans.pensja(pensjaPracy);
         } else {
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + pracy.getImie() + " odchodzi. "
@@ -226,7 +274,8 @@ public class DzienGry implements Serializable {
      */
     public int kosztPrzekupstwa(Loch loch) {
         return loch.getMinisterFinansow().cenaPoNegocjacjach(
-                (int) Math.round(wartoscOddzialu(bohaterowie) * loch.mnoznikLapowki()));
+                (int) Math.round(wartoscOddzialu(bohaterowie) * loch.mnoznikLapowki()
+                        * (loch.getMinisterFinansow().ma(CechaMinistra.NEGOCJATOR) ? 1 - RABAT_NEGOCJATORA : 1)));
     }
 
     /**
@@ -280,7 +329,7 @@ public class DzienGry implements Serializable {
                 polegli.add(potwor);
                 loch.usun(potwor);
                 bilans.polegl(potwor);
-            } else if (potwor.podsumujWalke()) {
+            } else if (potwor.podsumujWalke(loch.getMinisterPracy().ma(CechaMinistra.TRENER))) {
                 bilans.awans(potwor);
                 zdarzenia.add(new Informacja(potwor.getImie() + " awansuje na poziom " + potwor.getPoziom()
                         + " (żołd " + potwor.getZold() + ").", Ton.DOBRY));

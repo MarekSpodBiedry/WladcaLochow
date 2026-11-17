@@ -65,7 +65,8 @@ class DzienGryTest {
         assertEquals(500, bilans.getZlotoRano());
         assertEquals(40, bilans.getDochod());
         assertEquals(33, bilans.getKopalnia());
-        assertEquals(20, bilans.getPensje());
+        // Pensje: 12 + 8 stałej części plus po 3% z przychodu 73 (po 2 złota).
+        assertEquals(12 + 8 + 2 * Math.round(73 * 0.03), bilans.getPensje());
         assertEquals(11, bilans.getRekrutacja());
         assertEquals(List.of("Nowy"), bilans.getZatrudnieni());
         assertEquals(wladcalochow.model.BilansDnia.Obrona.SPOKOJ, bilans.getObrona());
