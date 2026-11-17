@@ -2,6 +2,7 @@ package wladcalochow.model;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -195,12 +196,12 @@ public class DzienGry implements Serializable {
         List<Potwor> pierwszaLinia = new ArrayList<>(wojownicy);
         List<Potwor> odwod = new ArrayList<>();
         if (loch.getPostawa() == Postawa.ODWOD) {
-            odwod = wojownicy.stream().filter(p -> p.procentMorale() < 0.50).collect(Collectors.toList());
-            if (odwod.size() < wojownicy.size()) {
-                pierwszaLinia.removeAll(odwod);
-            } else {
-                odwod = new ArrayList<>();
-            }
+            // Jedna trzecia najcenniejszych wojowników (najwyższy poziom, potem największa moc) czeka z tyłu.
+            odwod = wojownicy.stream()
+                    .sorted(Comparator.comparingInt(Potwor::getPoziom).thenComparingInt(Potwor::moc).reversed())
+                    .limit(wojownicy.size() / 3)
+                    .collect(Collectors.toList());
+            pierwszaLinia.removeAll(odwod);
             if (!odwod.isEmpty()) {
                 zdarzenia.add(new Informacja("W odwodzie czekają: " + imiona(odwod) + ".", Ton.NEUTRALNY));
             }

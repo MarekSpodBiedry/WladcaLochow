@@ -188,19 +188,25 @@ class DzienGryTest {
     }
 
     @Test
-    void odwodZatrzymujePotworyZNiskimMorale() {
+    void odwodZatrzymujeTrzeciaNajcenniejszychWojownikow() {
         Loch loch = loch(1000);
-        Ork pewny = new Ork("Pewny", 14, 60, 100, 20);
-        Ork chwiejny = new Ork("Chwiejny", 14, 60, 100, 20);
-        chwiejny.zmienMorale(-60);
-        loch.zatrudnij(pewny);
-        loch.zatrudnij(chwiejny);
+        // Bylejaki minister wysyła do kopalni losowo, więc w tym teście kopalnię omijamy: 3 potwory to 1 górnik.
+        List<Ork> orki = new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            Ork ork = new Ork("Ork" + i, 10 + i, 60, 100, 20);
+            orki.add(ork);
+            loch.zatrudnij(ork);
+        }
         loch.setPostawa(Postawa.ODWOD);
         DzienGry dzien = dzien(0, List.of(), List.of(new Rycerz("Sir", 16, 80, 90, 10)));
         dzien.rozegrajPoranek(loch, new Random(1));
         Walka walka = dzien.przygotujObrone(loch, new Random(1), new ArrayList<>());
-        assertEquals(List.of(pewny), walka.getObroncy());
-        assertEquals(List.of(chwiejny), walka.getOdwod());
+        List<Potwor> wojownicy = new ArrayList<>(walka.getObroncy());
+        wojownicy.addAll(walka.getOdwod());
+        assertEquals(wojownicy.size() / 3, walka.getOdwod().size(), "w odwodzie czeka jedna trzecia wojowników");
+        int najslabszyWOdwodzie = walka.getOdwod().stream().mapToInt(Potwor::moc).min().orElseThrow();
+        int najsilniejszyWLinii = walka.getObroncy().stream().mapToInt(Potwor::moc).max().orElseThrow();
+        assertTrue(najslabszyWOdwodzie >= najsilniejszyWLinii, "w odwodzie są najcenniejsi");
     }
 
     @Test

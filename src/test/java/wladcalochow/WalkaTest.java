@@ -136,6 +136,25 @@ class WalkaTest {
         assertTrue(smiercGoblina >= 0 && atakOgra > smiercGoblina);
     }
 
+    @Test
+    void odwodWchodziGdyPierwszaLiniaStopniejeDoPolowyIUderzaOdRazu() {
+        Rycerz rycerz = new Rycerz("Sir", 100, 2000, 2000, 0);
+        List<Goblin> linia = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            linia.add(new Goblin("Gob" + i, 1, 5, 400, 9));
+        }
+        Ogr odwod = new Ogr("Kafar", 500, 3000, 90, 40);
+        Walka walka = new Walka(List.of(rycerz), List.copyOf(linia), List.of(odwod), new Skarbiec(0), 1.0, new Random(5));
+        List<Zdarzenie> zdarzenia = rozegraj(walka);
+        int wejscie = indeks(zdarzenia, z -> z instanceof Zdarzenie.Informacja i && i.opis().contains("Odwód wkracza"));
+        assertTrue(wejscie >= 0, "odwód wszedł do walki");
+        long martwiPrzedWejsciem = zdarzenia.subList(0, wejscie).stream()
+                .filter(z -> z instanceof Zdarzenie.Smierc s && linia.contains(s.kto())).count();
+        assertEquals(2, martwiPrzedWejsciem, "odwód wchodzi, gdy z czterech zostaje dwóch");
+        assertTrue(zdarzenia.get(wejscie + 1) instanceof Zdarzenie.Atak a && a.kto() == odwod,
+                "odwód uderza zaraz po wejściu");
+    }
+
     private static int indeks(List<Zdarzenie> zdarzenia, java.util.function.Predicate<Zdarzenie> warunek) {
         for (int i = 0; i < zdarzenia.size(); i++) {
             if (warunek.test(zdarzenia.get(i))) {

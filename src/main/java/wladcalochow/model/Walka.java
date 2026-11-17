@@ -21,6 +21,7 @@ public class Walka implements PoleWalki, Serializable {
     private final List<Bohater> bohaterowie;
     private final List<Potwor> obroncy;
     private final List<Potwor> odwod;
+    private final int liczebnoscPierwszejLinii;
     private final Skarbiec skarbiec;
     private final Random los;
     private final double mnoznikKradziezy;
@@ -34,6 +35,7 @@ public class Walka implements PoleWalki, Serializable {
         this.bohaterowie = new ArrayList<>(bohaterowie);
         this.obroncy = new ArrayList<>(obroncy);
         this.odwod = new ArrayList<>(odwod);
+        this.liczebnoscPierwszejLinii = obroncy.size();
         this.skarbiec = skarbiec;
         this.mnoznikKradziezy = mnoznikKradziezy;
         this.los = los;
@@ -134,20 +136,34 @@ public class Walka implements PoleWalki, Serializable {
             zdarzenia.add(new Zdarzenie.KoniecWalki(true));
             return true;
         }
+        // Odwód wkracza, gdy pierwsza linia stopnieje do połowy (albo całkiem padnie), i od razu uderza.
+        if (!odwod.isEmpty() && aktywni(obroncy).size() * 2 <= liczebnoscPierwszejLinii) {
+            wprowadzOdwod(zdarzenia);
+            return rozstrzygnij(zdarzenia);
+        }
         if (aktywni(obroncy).isEmpty()) {
-            if (!odwod.isEmpty()) {
-                obroncy.addAll(odwod);
-                odwod.clear();
-                runda = null;
-                zdarzenia.add(new Zdarzenie.Informacja(
-                        "Pierwsza linia padła. Odwód wkracza do walki!", Zdarzenie.Ton.NAGLOWEK));
-                return false;
-            }
             wynik = Wynik.OBRONA_PRZEGRANA;
             zdarzenia.add(new Zdarzenie.KoniecWalki(false));
             return true;
         }
         return false;
+    }
+
+    /** Odwód dołącza do walki i każdy z jego wojowników od razu wykonuje jeden atak (uderzenie z zaskoczenia). */
+    private void wprowadzOdwod(List<Zdarzenie> zdarzenia) {
+        List<Potwor> wchodzacy = new ArrayList<>(odwod);
+        obroncy.addAll(odwod);
+        odwod.clear();
+        zdarzenia.add(new Zdarzenie.Informacja("Pierwsza linia słabnie. Odwód wkracza do walki i uderza z zaskoczenia!",
+                Zdarzenie.Ton.NAGLOWEK));
+        for (Potwor potwor : wchodzacy) {
+            if (aktywni(bohaterowie).isEmpty()) {
+                break;
+            }
+            if (potwor.wWalce() && potwor.wybierzAkcje(this, los) instanceof Akcja.Atak atak) {
+                atakuj(potwor, atak.cel(), zdarzenia);
+            }
+        }
     }
 
     private static <T extends Istota> List<T> aktywni(List<T> strona) {
