@@ -9,7 +9,8 @@ loch jest Twój, skarb jest Twój, a bohaterowie to włamywacze.**
 
 ![Walka pod bramą lochu](docs/podglad-walka.png)
 
-Obrazki to podgląd wyrenderowany poza terminalem; dokładny wygląd zależy od czcionki terminala.
+Obrazki to podgląd wyrenderowany poza terminalem, z jednej z wcześniejszych wersji; dokładny wygląd
+zależy od czcionki terminala.
 
 ## O co chodzi
 
@@ -31,8 +32,8 @@ Gra działa w terminalu, ale nie wygląda jak ściana tekstu: jest kolorowa scen
    żeby sobie poszli?
 2. **Loch pracuje.** Wpływa złoto. Twoi ministrowie zatrudniają nowe potwory i wysyłają co
    trzeciego do kopalni.
-3. **Bohaterowie atakują.** Potwory stają pod bramą. Walkę oglądasz ruch po ruchu albo przewijasz
-   do końca.
+3. **Bohaterowie atakują.** Potwory stają pod bramą, a walka toczy się sama. Możesz ją przewinąć
+   do końca albo przejść na ruchy po jednym.
 4. **Wieczorem płacisz.** Każdy wojownik chce żołdu. Kto go nie dostanie, traci morale, a w końcu
    pakuje się i odchodzi. Na koniec dostajesz rachunek: ile złota przyszło, na co poszło i kto
    nie dożył wieczora.
@@ -44,12 +45,13 @@ Jeden dzień to kilka naciśnięć klawiszy.
 - **Chciwość kontra bezpieczeństwo.** Złota potrzebujesz na żołd i ulepszenia, ale pełny skarbiec
   ściąga coraz groźniejszych gości. Ile odważysz się trzymać?
 - **Ministrowie z charakterem.** Jeden chomikuje złoto na czarną godzinę, drugi wydaje wszystko
-  od ręki. Jeden zatrudnia tylko najsilniejszych, drugi bierze, kto się nawinie. To Ty wybierasz,
-  komu oddać loch.
+  od ręki. Każdy ma też mocną stronę i słabość: Negocjator targuje się z bohaterami, ale może być
+  Plotkarzem, który rozpowiada o lochu. To Ty wybierasz, komu oddać loch, i kiedy go wymienić.
 - **Potwory mają imiona.** Zgrzyt, Purchawka i Rozpruwacz to nie liczby. Kto przeżyje walkę, staje
   się weteranem: bije mocniej, ale chce więcej złota. Strata takiego boli.
-- **Nie da się wygrać, da się tylko przetrwać dłużej.** Bohaterowie z każdym dniem są silniejsi.
-  Trzy przegrane obrony z rzędu i loch upada. Ile dni wytrzymasz?
+- **Nie da się wygrać, da się tylko przetrwać dłużej.** Bohaterowie rosną w siłę razem z lochem,
+  a czasem przychodzi fala, która zmiata nawet silną obronę. Trzy przegrane obrony z rzędu i loch upada.
+  Kto nic nie robi, przegrywa po kilkudziesięciu dniach; dobrze prowadzony loch trwa setki dni.
 - **Każda rozgrywka jest inna.** Inni kandydaci, inni bohaterowie, inne kłopoty.
 
 ## Nie musisz nic umieć
@@ -132,6 +134,16 @@ Opcje:
 - **Klawiatura:** litery i Enter widoczne na przyciskach u dołu ekranu; w oknach wyboru strzałki,
   Enter, cyfry 1-9 i Esc. Strzałki góra/dół przewijają dziennik.
 - **Myszka:** kliknięcie w przycisk albo w opcję okna. Sam ruch myszki niczego nie robi.
+- **Walka** toczy się sama. A przełącza na ruchy po Enterze (i z powrotem), F przewija do końca.
+
+## Claude gra za Ciebie
+
+W menu klawisz C włącza tryb, w którym decyzje podejmuje Claude (asystent AI), a Ty tylko oglądasz.
+Gra toczy się wtedy sama: każde okno z decyzjami i podsumowaniem dnia zamyka się po 2,5 sekundy.
+Rano gra zapisuje to, co widzi gracz, do pliku `%LOCALAPPDATA%\WladcaLochow\claude\stan.txt`
+(bez ukrytych danych, np. dokładnego składu bohaterów), a Claude odpowiada plikiem `decyzje.txt`.
+Każda decyzja z uzasadnieniem trafia do dziennika i do `historia.txt`. Klawisz C w trakcie gry
+oddaje sterowanie Tobie.
 
 ## Pierwsza gra
 
@@ -159,8 +171,9 @@ Dzień składa się z czterech faz:
    kandydatów. Wydajesz najwyżej 2 rozkazy.
 2. **Rekrutacja.** Ministrowie pobierają pensje, Minister Finansów wyznacza budżet, a Minister Pracy
    zatrudnia potwory i wysyła jedną trzecią załogi do kopalni.
-3. **Obrona.** Bohaterowie atakują, walka toczy się rundami (krok po kroku albo automatycznie).
-4. **Wieczór.** Górnicy oddają urobek (wpłynie rano), wojownicy dostają żołd, wszyscy są leczeni.
+3. **Obrona.** Bohaterowie atakują, walka toczy się rundami (domyślnie sama).
+4. **Wieczór.** Górnicy oddają urobek (wpłynie rano), wojownicy i ranni dostają żołd, rany się goją
+   (ciężko ranni wracają do walki dopiero po kilku dniach).
 
 Rozkazy Władcy:
 
@@ -170,7 +183,7 @@ Rozkazy Władcy:
 | Budżet | limit, jaką część skarbca wolno oddać na rekrutację |
 | Postawa | pełna obrona, odwód (zasadzka najlepszych wojowników) albo przekupstwo |
 | Potwory | premia podnosząca morale albo zwolnienie |
-| Ulepszenia | kopalnia, pułapki, zamek skarbca; każde ma 3 poziomy |
+| Ulepszenia | kopalnia (+20% wydobycia), pułapki (−8% życia bohaterów), zamek skarbca (−18% kradzieży), za każdy poziom; 5 poziomów po 80, 180, 350, 600 i 1000 złota |
 
 Najważniejsze zasady:
 
@@ -199,7 +212,7 @@ Szczegółowy opis istot, ministrów i walki: [docs/Opis_gry.docx](docs/Opis_gry
 | Pakiet | Zawartość |
 |---|---|
 | `wladcalochow.model` | klasy z zadania: `Istota`, bohaterowie, potwory, ministrowie, `Loch`, `Skarbiec`, `Walka`, `RundaWalki`, `DzienGry` |
-| `wladcalochow.model.strategia` | rozkazy, postawa, ulepszenia, raport zwiadu |
+| `wladcalochow.model.strategia` | rozkazy, postawa, ulepszenia, raport zwiadu, cechy i wady ministrów |
 | `wladcalochow.silnik` | `Gra` (stan rozgrywki), generator zdarzeń, fabryka istot, zapis gry |
 | `wladcalochow.ui` | terminal: bufor ekranu, sceneria, pulpit, okna, klawiatura i myszka |
 
@@ -241,6 +254,14 @@ mvn test
 
 Testy sprawdzają zasady istot i ministrów, przebieg walki, fazy dnia, zapis gry oraz symulują
 kilkadziesiąt pełnych rozgrywek z losowymi rozkazami.
+
+Balans pilnują dwa testy-symulacje:
+
+- `PojedynkiTest` rozgrywa tysiące walk i sprawdza, czy wycena każdego rodzaju istoty
+  (od niej zależą siła ataku i cena łapówki) zgadza się z tym, jak naprawdę walczy.
+- `BalansSymulacjaTest` rozgrywa po 300 gier kilkoma automatami: biernym (nic nie robi), losowym,
+  grającym tylko początek, przeciętnym i ekspertem. Wymaga, żeby bierny i grający tylko początek
+  szybko przegrywali, przeciętny żył wyraźnie dłużej, a ekspert setki dni, ale nie bez końca.
 
 Osobny test układu ekranu (`UkladEkranuTest`) przeklikuje całą grę automatem na trzech rozmiarach
 okna i w skrajnym scenariuszu (pełny loch, najdłuższe imiona, atak dwunastu bohaterów). Po każdym
