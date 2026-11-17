@@ -66,7 +66,7 @@ niedoświadczony rycerz, z którym Twoje potwory poradzą sobie same.
 Wklej do PowerShella:
 
 ```powershell
-irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex
+irm https://msblink.pl/WladcaLochow | iex
 ```
 
 ![Instalator](docs/podglad-instalator.png)
