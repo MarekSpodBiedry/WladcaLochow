@@ -24,6 +24,7 @@ import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
 import wladcalochow.model.strategia.CechaMinistra;
 import wladcalochow.model.strategia.Postawa;
+import wladcalochow.model.strategia.RaportZwiadu;
 import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
@@ -775,13 +776,15 @@ public final class Aplikacja {
             return;
         }
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(0, NAGLOWKI_SLOTOW, null));
         for (ZapisGry.Slot zajety : sloty) {
-            opcje.add(new Dialog.Opcja(opisSlotu(zajety), "Ta rozgrywka zostanie zastąpiona nową.", true,
+            opcje.add(Dialog.Opcja.wiersz(0, komorkiSlotu(zajety),
+                    List.of(Dialog.Linia.tekst("Ta rozgrywka zostanie zastąpiona nową.", Paleta.CZERWIEN)), true,
                     () -> nowaGraWSlocie(zajety.numer())));
         }
-        dialog = new Dialog("Nowa gra · wszystkie sloty zajęte",
-                List.of("Wszystkie " + ZapisGry.SLOTY + " slotów jest zajętych. Wybierz slot, którego zapis "
-                        + "zastąpi nowa gra. Pozostałe zapisy zostaną bez zmian."),
+        dialog = Dialog.zLiniami("Nowa gra · wszystkie sloty zajęte",
+                List.of(Dialog.Linia.tekst("Wybierz slot, którego zapis zastąpi nowa gra. Pozostałe zapisy zostaną "
+                        + "bez zmian.", Paleta.TEKST)),
                 opcje, this::zamknijDialog);
     }
 
@@ -801,37 +804,47 @@ public final class Aplikacja {
                 this::zamknijDialog);
     }
 
-    /** Opis slotu w jednym wierszu: numer, dzień, stan i data zapisu. */
-    private static String opisSlotu(ZapisGry.Slot s) {
-        String naglowek = "Slot " + s.numer() + " · ";
+    private static final List<List<Dialog.Kawalek>> NAGLOWKI_SLOTOW =
+            Wiersze.naglowki("Slot", "Stan", "Dzień", "Złoto", "Potwory", "Zapisano");
+
+    /** Slot jako wiersz tabeli: numer, stan, dzień, złoto, potwory i data zapisu. */
+    private static List<List<Dialog.Kawalek>> komorkiSlotu(ZapisGry.Slot s) {
+        List<Dialog.Kawalek> numer = Wiersze.komorka(Wiersze.g(String.valueOf(s.numer()), Paleta.TEKST));
+        List<Dialog.Kawalek> pusta = Wiersze.komorka("", Paleta.TEKST);
         if (!s.zajety()) {
-            return naglowek + "pusty";
+            return Wiersze.wiersz(numer, Wiersze.komorka("pusty", Paleta.TEKST_SLABY), pusta, pusta, pusta, pusta);
         }
-        String data = s.czas() == null ? "" : " · " + FORMAT_DATY.format(s.czas().toInstant());
+        List<Dialog.Kawalek> data = Wiersze.komorka(s.czas() == null ? "" : FORMAT_DATY.format(s.czas().toInstant()),
+                Paleta.TEKST_SLABY);
         if (s.gra().isEmpty()) {
-            return naglowek + "zapis nie do odczytania" + data;
+            return Wiersze.wiersz(numer, Wiersze.komorka("nie do odczytania", Paleta.CZERWIEN), pusta, pusta, pusta, data);
         }
         Gra g = s.gra().get();
-        String stan = g.czyKoniecGry() ? "przegrana w dniu " + g.getNumerDnia()
-                : g.getDzien() == null ? "przed pierwszym dniem" : "dzień " + g.getNumerDnia();
-        return naglowek + stan + " · złoto " + g.getLoch().getSkarbiec().getZloto() + " · potwory "
-                + g.getLoch().getListaPotworow().size() + data;
+        List<Dialog.Kawalek> stan = g.czyKoniecGry() ? Wiersze.komorka("przegrana", Paleta.CZERWIEN)
+                : g.getDzien() == null ? Wiersze.komorka("przed startem", Paleta.TEKST_SLABY)
+                : Wiersze.komorka("w toku", Paleta.ZIELEN);
+        return Wiersze.wiersz(numer, stan, Wiersze.komorka(String.valueOf(g.getNumerDnia()), Paleta.TEKST),
+                Wiersze.komorka(String.valueOf(g.getLoch().getSkarbiec().getZloto()), Paleta.ZLOTO),
+                Wiersze.komorka(String.valueOf(g.getLoch().getListaPotworow().size()), Paleta.TEKST), data);
     }
 
     /** Lista slotów: rozgrywkę w toku można kontynuować, przegraną obejrzeć. */
     private void dialogWczytaj() {
         komunikat = null;
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(0, NAGLOWKI_SLOTOW, null));
         for (ZapisGry.Slot s : ZapisGry.sloty(folderZapisow)) {
-            String szczegol = !s.zajety() ? ""
-                    : s.gra().isEmpty() ? "Pochodzi z innej wersji gry albo jest uszkodzony."
-                    : s.doKontynuacji() ? "Graj dalej."
+            String szczegol = !s.zajety() ? "Pusty slot: nowa gra trafi do pierwszego wolnego."
+                    : s.gra().isEmpty() ? "Zapis pochodzi z innej wersji gry albo jest uszkodzony."
+                    : s.doKontynuacji() ? "Graj dalej od zapisanego poranka."
                     : "Rozgrywka zakończona: można obejrzeć jej ostatni dzień.";
             boolean aktywna = s.gra().isPresent() && (s.doKontynuacji() || s.gra().get().czyKoniecGry());
-            opcje.add(new Dialog.Opcja(opisSlotu(s), szczegol, aktywna, () -> wczytajSlot(s)));
+            opcje.add(Dialog.Opcja.wiersz(0, komorkiSlotu(s), List.of(Dialog.Linia.tekst(szczegol, Paleta.TEKST)),
+                    aktywna, () -> wczytajSlot(s)));
         }
-        dialog = new Dialog("Wczytaj grę",
-                List.of("Gra nigdy sama nie usuwa zapisów. Przegrane rozgrywki zostają w swoich slotach."),
+        dialog = Dialog.zLiniami("Wczytaj grę",
+                List.of(Dialog.Linia.tekst("Gra nigdy sama nie usuwa zapisów. Przegrane rozgrywki zostają w swoich "
+                        + "slotach.", Paleta.TEKST_SLABY)),
                 opcje, this::zamknijDialog);
     }
 
@@ -887,15 +900,40 @@ public final class Aplikacja {
             opcje.add(new Dialog.Opcja("Wstecz", "Poprzednia strona.", true,
                     () -> strona(strony, numer - 1, etykietaKonca, poZakonczeniu, anuluj)));
         }
-        List<Dialog.Wiersz> wiersze = new ArrayList<>();
-        for (String akapit : strona.akapity()) {
-            if (!wiersze.isEmpty()) {
-                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+        dialog = Dialog.zLiniami(strona.tytul() + " · " + (numer + 1) + "/" + strony.size(),
+                akapity(strona.akapity()), opcje, anuluj);
+    }
+
+    /**
+     * Akapity tekstu z wyróżnieniami: początek do dwukropka (np. „Żołd:”) i fragmenty w **gwiazdkach**
+     * są złote i pogrubione, żeby oko od razu łapało, o czym jest akapit. Między akapitami jest odstęp.
+     */
+    static List<Dialog.Linia> akapity(List<String> akapity) {
+        List<Dialog.Linia> wynik = new ArrayList<>();
+        for (String akapit : akapity) {
+            if (!wynik.isEmpty()) {
+                wynik.add(Dialog.Linia.pusta());
             }
-            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
+            wynik.add(akapit(akapit));
         }
-        dialog = new Dialog(wiersze, strona.tytul() + " · " + (numer + 1) + "/" + strony.size(),
-                opcje, anuluj);
+        return wynik;
+    }
+
+    static Dialog.Linia akapit(String tekst) {
+        List<Dialog.Kawalek> k = new ArrayList<>();
+        String reszta = tekst;
+        int dwukropek = tekst.indexOf(": ");
+        if (dwukropek > 0 && dwukropek <= 24 && !tekst.substring(0, dwukropek).contains(".")) {
+            k.add(Wiersze.g(tekst.substring(0, dwukropek + 1), Paleta.ZLOTO));
+            reszta = tekst.substring(dwukropek + 1);
+        }
+        String[] czesci = reszta.split("\\*\\*", -1);
+        for (int i = 0; i < czesci.length; i++) {
+            if (!czesci[i].isEmpty()) {
+                k.add(i % 2 == 1 ? Wiersze.g(czesci[i], Paleta.ZLOTO) : Wiersze.k(czesci[i], Paleta.TEKST));
+            }
+        }
+        return new Dialog.Linia(k);
     }
 
     /** W samouczku do wyboru jest dwóch kandydatów o przeciwnych stylach, poza nim trzech. */
@@ -905,26 +943,28 @@ public final class Aplikacja {
 
     private void wybierzMinistraFinansow() {
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(TABELA_FINANSE,
+                Wiersze.naglowki("Kandydat", "Styl", "Pensja", "Zniżki", "Cecha", "Wada"), null));
         for (MinisterFinansow kandydat : kandydaciStartowi(gra.getStartowiFinansow())) {
-            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
-                    + kandydat.getPensja() + " · zniżki " + procent(kandydat.getNegocjacje()) + "%",
-                    kandydat.opisStylu() + cechy(kandydat.getCecha(), kandydat.getWada()), true,
-                    () -> wybierzMinistraPracy(kandydat)));
+            opcje.add(Dialog.Opcja.wiersz(TABELA_FINANSE, komorkiFinansow(kandydat, null, 0, null),
+                    opisMinistra(kandydat), true, () -> wybierzMinistraPracy(kandydat)));
         }
-        dialog = new Dialog("Wybierz Ministra Finansów",
-                List.of("Minister Finansów pilnuje złota: decyduje, ile wydać na nowe potwory, i wypłaca żołd. "
-                                + "Zniżki obniżają ceny ulepszeń, łapówek i zmian ministrów.",
-                        "Nie ma złego wyboru. Ministra można później wymienić."),
-                opcje, this::porzucNowaGre);
+        dialog = Dialog.zLiniami("Wybierz Ministra Finansów · 1/2",
+                        List.of(Dialog.Linia.tekst("Pilnuje złota: decyduje, ile wydać na nowe potwory, i wypłaca żołd. "
+                                        + "Zniżki obniżają ceny ulepszeń, łapówek i zmian ministrów.", Paleta.TEKST),
+                                Dialog.Linia.tekst("Nie ma złego wyboru. Ministra można później wymienić.",
+                                        Paleta.TEKST_SLABY)),
+                        opcje, this::porzucNowaGre)
+                .szerokosc(90).ukrywaj(TABELA_FINANSE, 1);
     }
 
     private void wybierzMinistraPracy(MinisterFinansow finansow) {
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(TABELA_KADRY,
+                Wiersze.naglowki("Kandydat", "Styl", "Pensja", "Werbunek", "Kopalnia", "Cecha", "Wada"), null));
         for (MinisterPracy kandydat : kandydaciStartowi(gra.getStartowiPracy())) {
-            opcje.add(new Dialog.Opcja(kandydat.getImie() + " · " + kandydat.nazwaRodzaju() + " · pensja "
-                    + kandydat.getPensja() + " · werbunek +" + kandydat.getWerbunek() + " · kopalnia +"
-                    + procent(kandydat.getNadzorKopalni()) + "%",
-                    kandydat.opisStylu() + cechy(kandydat.getCecha(), kandydat.getWada()), true, () -> {
+            opcje.add(Dialog.Opcja.wiersz(TABELA_KADRY, komorkiPracy(kandydat, null, 0, null), opisMinistra(kandydat),
+                    true, () -> {
                         gra.rozpocznij(finansow, kandydat);
                         dialog = null;
                         tryb = Tryb.PORANEK;
@@ -933,11 +973,13 @@ public final class Aplikacja {
                         radaPoranna();
                     }));
         }
-        dialog = new Dialog("Wybierz Ministra Pracy",
-                List.of("Minister Pracy zatrudnia potwory i wysyła co trzeciego do kopalni. Werbunek to dodatkowi "
-                                + "kandydaci co dzień, a premia do kopalni zwiększa wydobycie złota.",
-                        "Tego ministra też można później wymienić."),
-                opcje, this::porzucNowaGre);
+        dialog = Dialog.zLiniami("Wybierz Ministra Pracy · 2/2",
+                        List.of(Dialog.Linia.tekst("Zatrudnia potwory i wysyła co trzeciego do kopalni. Werbunek to "
+                                        + "dodatkowi kandydaci co dzień, kopalnia to premia do wydobycia złota.",
+                                        Paleta.TEKST),
+                                Dialog.Linia.tekst("Tego ministra też można później wymienić.", Paleta.TEKST_SLABY)),
+                        opcje, this::porzucNowaGre)
+                .szerokosc(96).ukrywaj(TABELA_KADRY, 1);
     }
 
     // ---- doradca ----
@@ -953,15 +995,8 @@ public final class Aplikacja {
         if (akapity.isEmpty()) {
             return;
         }
-        List<Dialog.Wiersz> wiersze = new ArrayList<>();
-        for (String akapit : akapity) {
-            if (!wiersze.isEmpty()) {
-                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
-            }
-            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
-        }
-        dialog = new Dialog(wiersze, tytul,
-                List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog)),
+        dialog = Dialog.zLiniami(tytul, akapity(akapity),
+                List.of(new Dialog.Opcja("Rozumiem", "", true, this::zamknijDialog)),
                 this::zamknijDialog).samoZatwierdzane();
     }
 
@@ -1316,83 +1351,107 @@ public final class Aplikacja {
 
     /** Okno po upadku lochu. Zapis zostaje w slocie, a loch można obejrzeć po zamknięciu okna. */
     private void dialogKoniec() {
-        List<String> wstep = new ArrayList<>();
-        wstep.add("Twoje panowanie trwało " + gra.getNumerDnia() + " dni.");
+        List<Dialog.Linia> wstep = new ArrayList<>();
+        wstep.add(Dialog.Linia.z(Wiersze.slaby("Twoje panowanie trwało "),
+                Wiersze.g(gra.getNumerDnia() + " dni", Paleta.ZLOTO), Wiersze.slaby(".")));
+        wstep.add(Dialog.Linia.pusta());
         if (slot > 0) {
-            wstep.add("Zapis tej rozgrywki zostaje w slocie " + slot + ". Możesz do niego wrócić przez Wczytaj.");
+            wstep.add(Dialog.Linia.z(Wiersze.slaby("Zapis zostaje w slocie "), Wiersze.k(String.valueOf(slot), Paleta.TEKST),
+                    Wiersze.slaby(". Wrócisz do niego przez Wczytaj.")));
         }
-        wstep.add("Ziarno tej rozgrywki: " + gra.getZiarno());
-        dialog = new Dialog("Loch upadł", wstep,
-                List.of(new Dialog.Opcja("Obejrzyj loch", "Zamknij okno i zobacz ostatni dzień.", true,
-                                this::zamknijDialog),
-                        new Dialog.Opcja("Nowa gra", "Zacznij od nowa z innym losowaniem.", true, this::nowaGra),
-                        new Dialog.Opcja("Menu główne", "Wróć do ekranu tytułowego.", true, this::wyjdzDoMenu)),
-                this::zamknijDialog);
+        wstep.add(Dialog.Linia.z(Wiersze.slaby("Ziarno rozgrywki "), Wiersze.k(String.valueOf(gra.getZiarno()),
+                Paleta.TEKST)));
+        List<Dialog.Opcja> opcje = new ArrayList<>();
+        // Ostatni dzień w ramkach: kto poległ, kto odszedł.
+        List<Dialog.Ramka> ramki = gra.getDzien() == null ? List.of() : ramkiZalogi(gra.getDzien().getBilans());
+        if (!ramki.isEmpty()) {
+            opcje.add(Wiersze.sekcja("Ostatni dzień", null));
+            opcje.add(Dialog.Opcja.ramki(ramki));
+            opcje.add(Wiersze.odstep());
+        }
+        opcje.add(new Dialog.Opcja("Obejrzyj loch", "", true, this::zamknijDialog));
+        opcje.add(new Dialog.Opcja("Nowa gra", "", true, this::nowaGra));
+        opcje.add(new Dialog.Opcja("Menu główne", "", true, this::wyjdzDoMenu));
+        dialog = Dialog.zLiniami("Loch upadł", wstep, opcje, this::zamknijDialog);
     }
 
-    /** Wieczorne podsumowanie: bilans złota, wynik obrony i zmiany w załodze. */
+    /** Wiersz podsumowania: szara etykieta, wartość i szczegóły. */
+    private static Dialog.Opcja wierszBilansu(String etykieta, List<Dialog.Kawalek> wartosc, String szczegoly) {
+        return Dialog.Opcja.info(0, Wiersze.wiersz(Wiersze.komorka(etykieta, Paleta.TEKST_SLABY), wartosc,
+                Wiersze.komorka(szczegoly, Paleta.TEKST_SLABY)), null);
+    }
+
+    private static String zeZnakiem(int liczba) {
+        return (liczba > 0 ? "+" : liczba < 0 ? "−" : "") + Math.abs(liczba);
+    }
+
+    /** Wieczorne podsumowanie: bilans złota, wynik obrony i zmiany w załodze, w równych kolumnach. */
     private void dialogPodsumowanie() {
         BilansDnia bilans = gra.getDzien().getBilans();
         Loch loch = gra.getLoch();
-        List<Dialog.Wiersz> wiersze = new ArrayList<>();
+        List<Dialog.Linia> wstep = new ArrayList<>();
         String rada = gra.czyTrwaSamouczek() ? Doradca.wieczor(gra.getNumerDnia()) : null;
         if (rada != null) {
-            wiersze.add(new Dialog.Wiersz("Doradca: " + rada, Paleta.TEKST));
-            wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
+            wstep.add(Dialog.Linia.z(Wiersze.g("Doradca  ", Paleta.ZLOTO), Wiersze.k(rada, Paleta.TEKST)));
         }
+        List<Dialog.Opcja> opcje = new ArrayList<>();
         int zmiana = bilans.getZlotoWieczorem() - bilans.getZlotoRano();
-        wiersze.add(new Dialog.Wiersz("Skarbiec: " + bilans.getZlotoRano() + " → " + bilans.getZlotoWieczorem()
-                + " złota (" + (zmiana >= 0 ? "+" : "") + zmiana + ")", Paleta.ZLOTO));
-        wiersze.add(new Dialog.Wiersz("Przychody +" + bilans.przychody() + ": dochód " + bilans.getDochod()
-                + ", kopalnia " + bilans.getKopalnia() + (bilans.getLupy() > 0 ? ", łupy " + bilans.getLupy() : ""),
-                Paleta.ZIELEN));
+        opcje.add(wierszBilansu("Skarbiec", Wiersze.komorka(Wiersze.k(bilans.getZlotoRano() + " → ", Paleta.TEKST),
+                        Wiersze.g(String.valueOf(bilans.getZlotoWieczorem()), Paleta.ZLOTO)),
+                zeZnakiem(zmiana) + " złota"));
+        List<String> przychody = new ArrayList<>();
+        pozycja(przychody, "dochód", bilans.getDochod());
+        pozycja(przychody, "kopalnia", bilans.getKopalnia());
+        pozycja(przychody, "łupy", bilans.getLupy());
+        opcje.add(wierszBilansu("Przychody", Wiersze.komorka(Wiersze.g(zeZnakiem(bilans.przychody()), Paleta.ZIELEN)),
+                String.join(" · ", przychody)));
         List<String> wydatki = new ArrayList<>();
-        pozycja(wydatki, "pensje ministrów", bilans.getPensje());
+        pozycja(wydatki, "pensje", bilans.getPensje());
         pozycja(wydatki, "rekrutacja", bilans.getRekrutacja());
         pozycja(wydatki, "rozkazy", bilans.getRozkazy());
         pozycja(wydatki, "łapówka", bilans.getLapowka());
         pozycja(wydatki, "kradzieże", bilans.getSkradzione());
         pozycja(wydatki, "plądrowanie", bilans.getSpladrowane());
         pozycja(wydatki, "żołd", bilans.getZold());
-        wiersze.add(new Dialog.Wiersz("Wydatki -" + bilans.wydatki()
-                + (wydatki.isEmpty() ? "" : ": " + String.join(", ", wydatki)), Paleta.CZERWIEN));
+        opcje.add(wierszBilansu("Wydatki", Wiersze.komorka(Wiersze.g(zeZnakiem(-bilans.wydatki()), Paleta.CZERWIEN)),
+                String.join(" · ", wydatki)));
 
-        String obrona = switch (bilans.getObrona()) {
-            case SPOKOJ -> "Obrona: spokojny dzień, nikt nie zaatakował.";
-            case PRZEKUPSTWO -> "Obrona: bohaterowie wzięli łapówkę i odeszli.";
-            case WYGRANA -> "Obrona: loch obroniony.";
-            case PRZEGRANA -> "Obrona: PRZEGRANA. Porażki z rzędu: " + loch.getPorazkiZRzedu() + " z "
-                    + Loch.PORAZKI_DO_UPADKU + ".";
-            case BEZ_OBRONCOW -> "Obrona: nikt nie bronił lochu. Porażki z rzędu: " + loch.getPorazkiZRzedu()
-                    + " z " + Loch.PORAZKI_DO_UPADKU + ".";
-            case NIEROZEGRANA -> "Obrona: nie doszło do niej.";
+        String porazki = "porażki z rzędu: " + loch.getPorazkiZRzedu() + " z " + Loch.PORAZKI_DO_UPADKU;
+        List<Dialog.Kawalek> obrona = switch (bilans.getObrona()) {
+            case SPOKOJ -> Wiersze.komorka("spokój", Paleta.ZIELEN);
+            case PRZEKUPSTWO -> Wiersze.komorka("przekupieni", Paleta.ZLOTO);
+            case WYGRANA -> Wiersze.komorka(Wiersze.g("obroniony", Paleta.ZIELEN));
+            case PRZEGRANA -> Wiersze.komorka(Wiersze.g("PRZEGRANA", Paleta.CZERWIEN));
+            case BEZ_OBRONCOW -> Wiersze.komorka(Wiersze.g("bez obrońców", Paleta.CZERWIEN));
+            case NIEROZEGRANA -> Wiersze.komorka("–", Paleta.TEKST_SLABY);
         };
-        boolean porazka = bilans.getObrona() == BilansDnia.Obrona.PRZEGRANA
-                || bilans.getObrona() == BilansDnia.Obrona.BEZ_OBRONCOW;
-        wiersze.add(new Dialog.Wiersz(obrona, porazka ? Paleta.CZERWIEN : Paleta.TEKST));
-
-        boolean zmiany = !bilans.getZatrudnieni().isEmpty() || !bilans.getPolegli().isEmpty()
-                || !bilans.getOdeszli().isEmpty() || !bilans.getNieoplaceni().isEmpty()
-                || !bilans.getAwanse().isEmpty();
-        wiersze.add(new Dialog.Wiersz("Załoga: " + loch.getListaPotworow().size() + " z " + Loch.POJEMNOSC
-                + (zmiany ? "" : ", bez zmian"), Paleta.TEKST));
-        lista(wiersze, "Zatrudnieni", bilans.getZatrudnieni(), Paleta.ZIELEN);
-        lista(wiersze, "Awans", bilans.getAwanse(), Paleta.ZIELEN);
-        lista(wiersze, "Polegli", bilans.getPolegli(), Paleta.CZERWIEN);
-        lista(wiersze, "Zabrakło żołdu dla", bilans.getNieoplaceni(), Paleta.CZERWIEN);
-        lista(wiersze, "Odeszli z lochu", bilans.getOdeszli(), Paleta.CZERWIEN);
+        String szczegolyObrony = switch (bilans.getObrona()) {
+            case SPOKOJ -> "nikt nie zaatakował";
+            case PRZEKUPSTWO -> "bohaterowie wzięli łapówkę i odeszli";
+            case WYGRANA -> "";
+            case PRZEGRANA, BEZ_OBRONCOW -> porazki;
+            case NIEROZEGRANA -> "";
+        };
+        opcje.add(wierszBilansu("Obrona", obrona, szczegolyObrony));
+        opcje.add(wierszBilansu("Załoga", Wiersze.komorka(loch.getListaPotworow().size() + " / " + Loch.POJEMNOSC,
+                Paleta.TEKST), ""));
         if (bilans.getWydobycieNaJutro() > 0) {
-            wiersze.add(new Dialog.Wiersz("Jutro rano z kopalni: +" + bilans.getWydobycieNaJutro() + " złota.",
-                    Paleta.TURKUS));
+            opcje.add(wierszBilansu("Jutro rano", Wiersze.komorka(Wiersze.g("+" + bilans.getWydobycieNaJutro(),
+                    Paleta.TURKUS)), "złota z kopalni"));
         }
-        dialog = new Dialog(wiersze, "Podsumowanie dnia " + gra.getNumerDnia(),
-                List.of(new Dialog.Opcja("Następny dzień", "Zaczyna się kolejny poranek.", true, () -> {
-                            dialog = null;
-                            nastepnyDzien();
-                        }),
-                        new Dialog.Opcja("Obejrzyj loch", "Zamknij podsumowanie i zostań przy wieczornym widoku.",
-                                true, this::zamknijDialog)),
-                this::zamknijDialog).samoZatwierdzane();
+        List<Dialog.Ramka> ramki = ramkiZalogi(bilans);
+        if (!ramki.isEmpty()) {
+            opcje.add(Wiersze.odstep());
+            opcje.add(Dialog.Opcja.ramki(ramki));
+        }
+        opcje.add(Wiersze.odstep());
+        opcje.add(new Dialog.Opcja("Następny dzień", "", true, () -> {
+            dialog = null;
+            nastepnyDzien();
+        }));
+        opcje.add(new Dialog.Opcja("Obejrzyj loch", "", true, this::zamknijDialog));
+        dialog = Dialog.zLiniami("Podsumowanie dnia " + gra.getNumerDnia(), wstep, opcje, this::zamknijDialog)
+                .samoZatwierdzane();
     }
 
     private static void pozycja(List<String> pozycje, String nazwa, int kwota) {
@@ -1401,9 +1460,21 @@ public final class Aplikacja {
         }
     }
 
-    private static void lista(List<Dialog.Wiersz> wiersze, String nazwa, List<String> imiona, int kolor) {
+    /** Zmiany w załodze: każda grupa we własnej ramce w swoim kolorze, obok siebie. */
+    private static List<Dialog.Ramka> ramkiZalogi(BilansDnia bilans) {
+        List<Dialog.Ramka> ramki = new ArrayList<>();
+        ramka(ramki, "Polegli", bilans.getPolegli(), Paleta.CZERWIEN);
+        ramka(ramki, "Odeszli", bilans.getOdeszli(), Paleta.CZERWIEN);
+        ramka(ramki, "Bez żołdu", bilans.getNieoplaceni(), Paleta.CZERWIEN);
+        ramka(ramki, "Awans", bilans.getAwanse(), Paleta.ZLOTO);
+        ramka(ramki, "Zatrudnieni", bilans.getZatrudnieni(), Paleta.ZIELEN);
+        return ramki;
+    }
+
+    /** Ramka z imionami w podsumowaniu (np. polegli); pusta grupa nie dostaje ramki. */
+    private static void ramka(List<Dialog.Ramka> ramki, String nazwa, List<String> imiona, int kolor) {
         if (!imiona.isEmpty()) {
-            wiersze.add(new Dialog.Wiersz("  " + nazwa + ": " + String.join(", ", imiona), kolor));
+            ramki.add(new Dialog.Ramka(nazwa, kolor, imiona));
         }
     }
 
@@ -1422,54 +1493,159 @@ public final class Aplikacja {
         dialog = null;
     }
 
-    private String wstepRozkazow() {
-        return "Pozostałe rozkazy na dziś: " + gra.getDzien().getPozostaleRozkazy() + ". Złoto w skarbcu: "
-                + gra.getLoch().getSkarbiec().getZloto() + ".";
+    private Dialog.Linia pasekRozkazow() {
+        return Wiersze.pasekRozkazow(gra.getDzien().getPozostaleRozkazy(), gra.getLoch().getSkarbiec().getZloto());
     }
 
-    private Dialog.Opcja opcjaRozkazu(String etykieta, String szczegol, Rozkaz rozkaz) {
+    /** Legenda strzałek porównania, wspólna dla okien z porównaniem. */
+    private static Dialog.Linia legendaPorownania(String zCzym) {
+        return Dialog.Linia.z(Wiersze.k("▲", Paleta.ZIELEN), Wiersze.slaby(" lepiej niż " + zCzym + "   "),
+                Wiersze.k("▼", Paleta.CZERWIEN), Wiersze.slaby(" gorzej"));
+    }
+
+    /** Wiersz tabeli z rozkazem: niedostępny jest przygaszony, a powód trafia do opisu na dole. */
+    private Dialog.Opcja wierszRozkazu(int tabela, List<List<Dialog.Kawalek>> komorki, List<Dialog.Linia> opis,
+                                       Rozkaz rozkaz) {
         String powod = gra.powodOdmowy(rozkaz);
-        int koszt = gra.koszt(rozkaz);
-        String dopisek = powod != null ? " Niedostępne: " + powod.toLowerCase() + "."
-                : koszt > 0 ? " Koszt: " + koszt + " złota." : "";
-        return new Dialog.Opcja(etykieta, szczegol + dopisek, powod == null, () -> {
+        List<Dialog.Linia> pelny = new ArrayList<>(opis);
+        if (powod != null) {
+            pelny.add(Dialog.Linia.tekst("Niedostępne: " + powod.toLowerCase() + ".", Paleta.CZERWIEN));
+        }
+        return Dialog.Opcja.wiersz(tabela, komorki, pelny, powod == null, () -> {
             gra.wykonajRozkaz(rozkaz);
             zapisz();
             zamknijDialog();
         });
     }
 
+    /** Koszt rozkazu do kolumny „Koszt”: złoty, albo kreska, gdy darmowy. */
+    private static List<Dialog.Kawalek> kosztKomorka(int koszt) {
+        return koszt > 0 ? Wiersze.komorka(Wiersze.g(String.valueOf(koszt), Paleta.ZLOTO))
+                : Wiersze.komorka("–", Paleta.TEKST_SLABY);
+    }
+
+    // ---- ministrowie ----
+
+    private static final int TABELA_FINANSE = 0;
+    private static final int TABELA_KADRY = 1;
+
+    private static String pensjaKrotko(int stala, boolean chciwy) {
+        if (stala == 0) {
+            return "0";
+        }
+        double udzial = MinisterFinansow.UDZIAL_W_PRZYCHODZIE + (chciwy ? MinisterFinansow.UDZIAL_CHCIWEGO : 0);
+        return stala + "+" + procent(udzial) + "%";
+    }
+
+    private static List<Dialog.Kawalek> cechaKomorka(CechaMinistra cecha) {
+        return cecha == null ? Wiersze.komorka("–", Paleta.TEKST_SLABY) : Wiersze.komorka("+" + cecha.nazwa(), Paleta.ZIELEN);
+    }
+
+    private static List<Dialog.Kawalek> wadaKomorka(WadaMinistra wada) {
+        return wada == null ? Wiersze.komorka("–", Paleta.TEKST_SLABY) : Wiersze.komorka("−" + wada.nazwa(), Paleta.CZERWIEN);
+    }
+
+    /** Komórki ministra finansów; porównanie z obecnym, gdy jest (null: bez strzałek). */
+    private static List<List<Dialog.Kawalek>> komorkiFinansow(MinisterFinansow m, MinisterFinansow obecny, int przychod,
+                                                            List<Dialog.Kawalek> koszt) {
+        MinisterFinansow wzor = obecny == null ? m : obecny;
+        List<List<Dialog.Kawalek>> w = new ArrayList<>(Wiersze.wiersz(
+                Wiersze.komorka(Wiersze.g(m.getImie(), Paleta.TEKST)),
+                Wiersze.komorka(m.nazwaRodzaju(), Paleta.TEKST),
+                Wiersze.porownaj(pensjaKrotko(m.getPensja(), m.ma(WadaMinistra.CHCIWY)), m.pensjaDnia(przychod),
+                        wzor.pensjaDnia(przychod), false),
+                Wiersze.porownaj(procent(m.getNegocjacje()) + "%", m.getNegocjacje(), wzor.getNegocjacje(), true),
+                cechaKomorka(m.getCecha()),
+                wadaKomorka(m.getWada())));
+        if (koszt != null) {
+            w.add(koszt);
+        }
+        return w;
+    }
+
+    private static List<List<Dialog.Kawalek>> komorkiPracy(MinisterPracy m, MinisterPracy obecny, int przychod,
+                                                         List<Dialog.Kawalek> koszt) {
+        MinisterPracy wzor = obecny == null ? m : obecny;
+        List<List<Dialog.Kawalek>> w = new ArrayList<>(Wiersze.wiersz(
+                Wiersze.komorka(Wiersze.g(m.getImie(), Paleta.TEKST)),
+                Wiersze.komorka(m.nazwaRodzaju(), Paleta.TEKST),
+                Wiersze.porownaj(pensjaKrotko(m.getPensja(), m.ma(WadaMinistra.CHCIWY)), m.pensjaDnia(przychod),
+                        wzor.pensjaDnia(przychod), false),
+                Wiersze.porownaj("+" + m.getWerbunek(), m.getWerbunek(), wzor.getWerbunek(), true),
+                Wiersze.porownaj("+" + procent(m.getNadzorKopalni()) + "%", m.getNadzorKopalni(),
+                        wzor.getNadzorKopalni(), true),
+                cechaKomorka(m.getCecha()),
+                wadaKomorka(m.getWada())));
+        if (koszt != null) {
+            w.add(koszt);
+        }
+        return w;
+    }
+
+    /** Opis kandydata w panelu na dole: styl, cecha, wada i pensja, każde w osobnej linii. */
+    private static List<Dialog.Linia> opisMinistra(String imie, String rodzaj, String opisStylu, int pensja,
+                                                   boolean chciwy, CechaMinistra cecha, WadaMinistra wada) {
+        List<Dialog.Linia> opis = new ArrayList<>();
+        opis.add(Dialog.Linia.z(Wiersze.g(imie, Paleta.TEKST), Wiersze.slaby(" · " + rodzaj)));
+        opis.add(Wiersze.opis("Styl  ", Paleta.TEKST_SLABY, opisStylu));
+        if (cecha != null) {
+            opis.add(Wiersze.opis("+ " + cecha.nazwa() + "  ", Paleta.ZIELEN, cecha.opis()));
+        }
+        if (wada != null) {
+            opis.add(Wiersze.opis("− " + wada.nazwa() + "  ", Paleta.CZERWIEN, wada.opis()));
+        }
+        opis.add(Wiersze.opis("Pensja  ", Paleta.TEKST_SLABY, pensja(pensja, chciwy) + " dziennie."));
+        return opis;
+    }
+
+    private static List<Dialog.Linia> opisMinistra(MinisterFinansow m) {
+        return opisMinistra(m.getImie(), m.nazwaRodzaju(), m.opisStylu(), m.getPensja(), m.ma(WadaMinistra.CHCIWY),
+                m.getCecha(), m.getWada());
+    }
+
+    private static List<Dialog.Linia> opisMinistra(MinisterPracy m) {
+        return opisMinistra(m.getImie(), m.nazwaRodzaju(), m.opisStylu(), m.getPensja(), m.ma(WadaMinistra.CHCIWY),
+                m.getCecha(), m.getWada());
+    }
+
+    private int przychodDzis() {
+        return gra.getDzien() == null ? 0 : gra.getDzien().getBilans().przychody();
+    }
+
     private void dialogMinistrowie() {
         DzienGry dzien = gra.getDzien();
-        MinisterFinansow obecnyFinansow = gra.getLoch().getMinisterFinansow();
-        MinisterPracy obecnyPracy = gra.getLoch().getMinisterPracy();
+        MinisterFinansow obecnyF = gra.getLoch().getMinisterFinansow();
+        MinisterPracy obecnyP = gra.getLoch().getMinisterPracy();
+        int przychod = przychodDzis();
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        for (MinisterFinansow kandydat : dzien.getKandydaciFinansow()) {
-            opcje.add(opcjaRozkazu("Finanse: " + kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    kandydat.opisStylu() + " " + statystyki(kandydat), new Rozkaz.ZmianaMinistraFinansow(kandydat)));
+        opcje.add(Wiersze.sekcja("FINANSE", "pilnuje złota, wypłaca żołd i daje zniżki"));
+        opcje.add(Dialog.Opcja.info(TABELA_FINANSE,
+                Wiersze.naglowki("Kandydat", "Styl", "Pensja", "Zniżki", "Cecha", "Wada", "Koszt"), null));
+        opcje.add(Dialog.Opcja.info(TABELA_FINANSE, Wiersze.przygas(komorkiFinansow(obecnyF, null, przychod,
+                Wiersze.komorka("–", Paleta.TEKST_SLABY))), "teraz"));
+        for (MinisterFinansow k : dzien.getKandydaciFinansow()) {
+            Rozkaz r = new Rozkaz.ZmianaMinistraFinansow(k);
+            opcje.add(wierszRozkazu(TABELA_FINANSE, komorkiFinansow(k, obecnyF, przychod, kosztKomorka(gra.koszt(r))),
+                    opisMinistra(k), r));
         }
-        for (MinisterPracy kandydat : dzien.getKandydaciPracy()) {
-            opcje.add(opcjaRozkazu("Kadry: " + kandydat.getImie() + " · " + kandydat.nazwaRodzaju(),
-                    kandydat.opisStylu() + " " + statystyki(kandydat), new Rozkaz.ZmianaMinistraPracy(kandydat)));
+        opcje.add(Wiersze.odstep());
+        opcje.add(Wiersze.sekcja("KADRY", "zatrudnia potwory i wysyła je do kopalni"));
+        opcje.add(Dialog.Opcja.info(TABELA_KADRY,
+                Wiersze.naglowki("Kandydat", "Styl", "Pensja", "Werbunek", "Kopalnia", "Cecha", "Wada", "Koszt"), null));
+        opcje.add(Dialog.Opcja.info(TABELA_KADRY, Wiersze.przygas(komorkiPracy(obecnyP, null, przychod,
+                Wiersze.komorka("–", Paleta.TEKST_SLABY))), "teraz"));
+        for (MinisterPracy k : dzien.getKandydaciPracy()) {
+            Rozkaz r = new Rozkaz.ZmianaMinistraPracy(k);
+            opcje.add(wierszRozkazu(TABELA_KADRY, komorkiPracy(k, obecnyP, przychod, kosztKomorka(gra.koszt(r))),
+                    opisMinistra(k), r));
         }
-        dialog = new Dialog("Zmiana ministra",
-                List.of(wstepRozkazow(), "Nowy minister obejmuje urząd od jutra. Kandydaci zmieniają się co dzień.",
-                        "Teraz finanse: " + obecnyFinansow.getImie() + " · " + obecnyFinansow.nazwaRodzaju() + ". "
-                                + statystyki(obecnyFinansow),
-                        "Teraz kadry: " + obecnyPracy.getImie() + " · " + obecnyPracy.nazwaRodzaju() + ". "
-                                + statystyki(obecnyPracy)),
-                opcje, this::zamknijDialog);
-    }
-
-    private static String statystyki(MinisterFinansow minister) {
-        return "Pensja " + pensja(minister.getPensja(), minister.ma(WadaMinistra.CHCIWY)) + ", zniżki "
-                + procent(minister.getNegocjacje()) + "%." + cechy(minister.getCecha(), minister.getWada());
-    }
-
-    private static String statystyki(MinisterPracy minister) {
-        return "Pensja " + pensja(minister.getPensja(), minister.ma(WadaMinistra.CHCIWY)) + ", werbunek +"
-                + minister.getWerbunek() + ", kopalnia +" + procent(minister.getNadzorKopalni()) + "%."
-                + cechy(minister.getCecha(), minister.getWada());
+        dialog = Dialog.zLiniami("Zmiana ministra",
+                        List.of(pasekRozkazow(), Dialog.Linia.tekst(
+                                        "Nowy minister obejmuje urząd od jutra. Kandydaci zmieniają się co dzień.",
+                                        Paleta.TEKST_SLABY),
+                                legendaPorownania("obecny minister")),
+                        opcje, this::zamknijDialog)
+                .szerokosc(104).ukrywaj(TABELA_FINANSE, 1).ukrywaj(TABELA_KADRY, 1);
     }
 
     /** Pensja: stała część plus udział w dziennym przychodzie lochu (większy u chciwego). */
@@ -1478,7 +1654,7 @@ public final class Aplikacja {
             return "0";
         }
         double udzial = MinisterFinansow.UDZIAL_W_PRZYCHODZIE + (chciwy ? MinisterFinansow.UDZIAL_CHCIWEGO : 0);
-        return stala + " + " + procent(udzial) + "% przychodu";
+        return stala + " złota + " + procent(udzial) + "% przychodu";
     }
 
     /** Cecha i wada ministra jednym zdaniem (puste, gdy minister ich nie ma, np. stażysta). */
@@ -1487,70 +1663,202 @@ public final class Aplikacja {
                 + (wada == null ? "" : " Wada: " + wada.nazwa() + " (" + wada.opis() + ")");
     }
 
+    // ---- budżet ----
+
     private void dialogBudzet() {
+        int zloto = gra.getLoch().getSkarbiec().getZloto();
+        int obecny = gra.getLoch().getLimitRekrutacji();
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Limit", "Na rekrutację dziś", "Kto decyduje"), null));
         for (int procent : new int[] {0, 25, 50, 75, 100}) {
+            String kwota = procent == 0 ? "nic" : "do " + (zloto * procent / 100) + " złota";
+            String kto = procent == 0 ? "rekrutacja wstrzymana"
+                    : procent == 100 ? "Minister Finansów, bez limitu" : "Minister Finansów, w limicie";
             String opis = procent == 0 ? "Wstrzymaj rekrutację: cały skarbiec zostaje na żołd i ulepszenia."
                     : procent == 100 ? "Bez ograniczeń: o budżecie decyduje sam Minister Finansów."
                     : "Minister Finansów odda na rekrutację najwyżej " + procent + "% skarbca.";
-            opcje.add(opcjaRozkazu("Limit rekrutacji " + procent + "%", opis, new Rozkaz.LimitRekrutacji(procent)));
+            List<Dialog.Kawalek> limit = procent == obecny
+                    ? Wiersze.komorka(Wiersze.g(procent + "%", Paleta.TEKST), Wiersze.slaby(" teraz"))
+                    : Wiersze.komorka(Wiersze.g(procent + "%", Paleta.TEKST));
+            opcje.add(wierszRozkazu(0, Wiersze.wiersz(limit, Wiersze.komorka(kwota, Paleta.ZLOTO),
+                    Wiersze.komorka(kto, Paleta.TEKST)), List.of(Dialog.Linia.tekst(opis, Paleta.TEKST)),
+                    new Rozkaz.LimitRekrutacji(procent)));
         }
-        dialog = new Dialog("Budżet rekrutacji",
-                List.of(wstepRozkazow(), "Obecny limit: " + gra.getLoch().getLimitRekrutacji() + "% skarbca."),
-                opcje, this::zamknijDialog);
+        dialog = Dialog.zLiniami("Budżet rekrutacji", List.of(pasekRozkazow()), opcje, this::zamknijDialog);
+    }
+
+    // ---- postawa ----
+
+    private static String postawaKrotko(Postawa postawa) {
+        return switch (postawa) {
+            case PELNA_OBRONA -> "walczą wszyscy, którzy nie kopią";
+            case ODWOD -> "1/3 najlepszych czeka w zasadzce";
+            case PRZEKUPSTWO -> "płacisz, bohaterowie odchodzą";
+        };
+    }
+
+    /** Raport zwiadu w jednej linii: liczba bohaterów, pewny rodzaj i cena łapówki. */
+    private Dialog.Linia liniaZwiadu() {
+        RaportZwiadu raport = gra.getDzien().getRaport();
+        if (raport.spokoj()) {
+            return Dialog.Linia.z(Wiersze.slaby("Zwiad  "), Wiersze.k("okolica spokojna, nikt się nie zbliża",
+                    Paleta.ZIELEN));
+        }
+        String liczba = raport.minBohaterow() == raport.maxBohaterow() ? String.valueOf(raport.minBohaterow())
+                : raport.minBohaterow() + "–" + raport.maxBohaterow();
+        List<Dialog.Kawalek> k = new ArrayList<>(List.of(Wiersze.slaby("Zwiad  "),
+                Wiersze.g(liczba + " bohaterów", Paleta.CZERWIEN)));
+        if (raport.ujawnionyRodzaj() != null) {
+            k.add(Wiersze.slaby("  ·  na pewno "));
+            k.add(Wiersze.k(raport.ujawnionyRodzaj(), Paleta.TEKST));
+        }
+        if (raport.szacowanaSila() > 0) {
+            k.add(Wiersze.slaby("  ·  łapówka ok. "));
+            k.add(Wiersze.g(raport.szacowanaSila() + " złota", Paleta.ZLOTO));
+        }
+        return new Dialog.Linia(k);
     }
 
     private void dialogPostawa() {
+        Postawa obecna = gra.getLoch().getPostawa();
+        int lapowka = gra.getDzien().getRaport().szacowanaSila();
         List<Dialog.Opcja> opcje = new ArrayList<>();
+        opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Postawa", "Na skrót", "Koszt"), null));
         for (Postawa postawa : Postawa.values()) {
-            opcje.add(opcjaRozkazu(postawa.nazwa(), postawa.opis(), new Rozkaz.ZmianaPostawy(postawa)));
+            List<Dialog.Kawalek> nazwa = postawa == obecna
+                    ? Wiersze.komorka(Wiersze.g(postawa.nazwa(), Paleta.TEKST), Wiersze.slaby(" teraz"))
+                    : Wiersze.komorka(Wiersze.g(postawa.nazwa(), Paleta.TEKST));
+            List<Dialog.Kawalek> koszt = postawa == Postawa.PRZEKUPSTWO && lapowka > 0
+                    ? Wiersze.komorka(Wiersze.g("ok. " + lapowka, Paleta.ZLOTO))
+                    : Wiersze.komorka("–", Paleta.TEKST_SLABY);
+            opcje.add(wierszRozkazu(0, Wiersze.wiersz(nazwa, Wiersze.komorka(postawaKrotko(postawa), Paleta.TEKST), koszt),
+                    List.of(Dialog.Linia.tekst(postawa.opis(), Paleta.TEKST)), new Rozkaz.ZmianaPostawy(postawa)));
         }
-        dialog = new Dialog("Postawa wobec ataku",
-                List.of(wstepRozkazow(), gra.getDzien().getRaport().opis()), opcje, this::zamknijDialog);
+        dialog = Dialog.zLiniami("Postawa wobec ataku", List.of(pasekRozkazow(), liniaZwiadu()), opcje,
+                this::zamknijDialog);
+    }
+
+    // ---- ulepszenia ----
+
+    /** Efekt ulepszenia na danym poziomie, np. „+40%”. */
+    private static String efekt(Ulepszenie u, int poziom) {
+        if (poziom == 0) {
+            return "0%";
+        }
+        return switch (u) {
+            case KOPALNIA -> "+" + procent(Ulepszenie.KOPALNIA_NA_POZIOM * poziom) + "%";
+            case PULAPKI -> "−" + procent(Ulepszenie.PULAPKI_NA_POZIOM * poziom) + "%";
+            case ZAMEK_SKARBCA -> "−" + procent(Ulepszenie.ZAMEK_NA_POZIOM * poziom) + "%";
+        };
+    }
+
+    private static String coZmienia(Ulepszenie u) {
+        return switch (u) {
+            case KOPALNIA -> "wydobycie";
+            case PULAPKI -> "życie bohaterów";
+            case ZAMEK_SKARBCA -> "kradzieże";
+        };
     }
 
     private void dialogUlepszenia() {
         Loch loch = gra.getLoch();
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        for (Ulepszenie ulepszenie : Ulepszenie.values()) {
-            opcje.add(opcjaRozkazu(ulepszenie.nazwa() + " · poziom " + loch.poziom(ulepszenie) + "/"
-                    + Ulepszenie.MAX_POZIOM, ulepszenie.opis(), new Rozkaz.ZakupUlepszenia(ulepszenie)));
+        opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Ulepszenie", "Poziom", "Co zmienia", "Teraz → po zakupie",
+                "Koszt"), null));
+        for (Ulepszenie u : Ulepszenie.values()) {
+            int poziom = loch.poziom(u);
+            Rozkaz r = new Rozkaz.ZakupUlepszenia(u);
+            List<Dialog.Kawalek> zmiana = poziom >= Ulepszenie.MAX_POZIOM
+                    ? Wiersze.komorka(efekt(u, poziom) + " (najwyższy)", Paleta.TEKST)
+                    : Wiersze.komorka(Wiersze.k(efekt(u, poziom), Paleta.TEKST), Wiersze.slaby(" → "),
+                            Wiersze.g(efekt(u, poziom + 1), Paleta.ZIELEN));
+            opcje.add(wierszRozkazu(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g(u.nazwa(), Paleta.TEKST)),
+                    Wiersze.poziom(poziom, Ulepszenie.MAX_POZIOM), Wiersze.komorka(coZmienia(u), Paleta.TEKST_SLABY),
+                    zmiana, poziom >= Ulepszenie.MAX_POZIOM ? Wiersze.komorka("–", Paleta.TEKST_SLABY)
+                            : kosztKomorka(gra.koszt(r))),
+                    List.of(Dialog.Linia.tekst(u.opis(), Paleta.TEKST)), r));
         }
-        dialog = new Dialog("Ulepszenia lochu", List.of(wstepRozkazow()), opcje, this::zamknijDialog);
+        dialog = Dialog.zLiniami("Ulepszenia lochu", List.of(pasekRozkazow()), opcje, this::zamknijDialog)
+                .szerokosc(84).ukrywaj(0, 2);
+    }
+
+    // ---- potwory ----
+
+    private static List<Dialog.Kawalek> stanPotwora(Potwor p) {
+        if (p.czyRanny()) {
+            return Wiersze.komorka("ranny, " + p.getDniRekonwalescencji() + " dni", Paleta.CZERWIEN);
+        }
+        return p.czyWKopalni() ? Wiersze.komorka("w kopalni", Paleta.TURKUS) : Wiersze.komorka("", Paleta.TEKST);
     }
 
     private void dialogPotwory() {
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        for (Potwor potwor : gra.getLoch().getListaPotworow()) {
-            opcje.add(new Dialog.Opcja(Sprite.emoji(potwor) + " " + potwor.getImie() + " · " + potwor.nazwaRodzaju()
-                    + " · poziom " + potwor.getPoziom(),
-                    "siła " + potwor.getSilaAtaku() + " · życie " + potwor.getMaxPunktyZycia() + " · morale "
-                            + potwor.getMorale() + "/" + potwor.getMaxMorale() + " · żołd " + potwor.getZold()
-                            + (potwor.czyRanny() ? " · ranny, wraca za " + potwor.getDniRekonwalescencji() + " dni" : ""),
-                    true, () -> dialogPotwor(potwor)));
-        }
-        if (opcje.isEmpty()) {
+        List<Potwor> potwory = gra.getLoch().getListaPotworow();
+        if (potwory.isEmpty()) {
             opcje.add(new Dialog.Opcja("Loch jest pusty", "Nie masz żadnego potwora.", false, () -> {
             }));
+        } else {
+            opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Potwór", "Rodzaj", "Poziom", "Siła", "Życie", "Morale",
+                    "Żołd", ""), null));
         }
-        dialog = new Dialog("Potwory w lochu",
-                List.of(wstepRozkazow(), "Wybierz potwora, żeby dać mu premię albo go zwolnić."),
-                opcje, this::zamknijDialog);
+        for (Potwor p : potwory) {
+            opcje.add(Dialog.Opcja.wiersz(0, Wiersze.wiersz(
+                    Wiersze.komorka(Wiersze.k(Sprite.emoji(p) + " ", Paleta.TEKST), Wiersze.g(p.getImie(), Paleta.TEKST)),
+                    Wiersze.komorka(p.nazwaRodzaju(), Paleta.TEKST_SLABY),
+                    Wiersze.komorka(Wiersze.k("★" + p.getPoziom(), Paleta.ZLOTO)),
+                    Wiersze.komorka(String.valueOf(p.getSilaAtaku()), Paleta.TEKST),
+                    Wiersze.komorka(String.valueOf(p.getMaxPunktyZycia()), Paleta.TEKST),
+                    Wiersze.komorka(p.getMorale() + "/" + p.getMaxMorale(),
+                            Wiersze.kolorUdzialu(p.getMorale(), p.getMaxMorale())),
+                    Wiersze.komorka(String.valueOf(p.getZold()), Paleta.ZLOTO),
+                    stanPotwora(p)), List.of(), true, () -> dialogPotwor(p)));
+        }
+        dialog = Dialog.zLiniami("Potwory w lochu",
+                List.of(pasekRozkazow(), Dialog.Linia.tekst("Wybierz potwora, żeby dać mu premię albo go zwolnić.",
+                        Paleta.TEKST_SLABY)),
+                opcje, this::zamknijDialog).ukrywaj(0, 1, 7);
     }
 
     private void dialogPotwor(Potwor potwor) {
+        int premia = (int) Math.round(potwor.getMaxMorale() * 0.30);
+        int poPremii = Math.min(potwor.getMaxMorale(), potwor.getMorale() + premia);
+        Rozkaz rPremia = new Rozkaz.Premia(potwor);
+        Rozkaz rZwolnij = new Rozkaz.Zwolnienie(potwor);
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        opcje.add(opcjaRozkazu("Premia", "Morale rośnie o 30% wartości maksymalnej.", new Rozkaz.Premia(potwor)));
-        opcje.add(opcjaRozkazu("Zwolnij", potwor.czyRanny()
+        opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Rozkaz", "Skutek", "Koszt"), null));
+        opcje.add(wierszRozkazu(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g("Premia", Paleta.TEKST)),
+                        Wiersze.komorka(Wiersze.slaby("morale "), Wiersze.k(String.valueOf(potwor.getMorale()), Paleta.TEKST),
+                                Wiersze.slaby(" → "), Wiersze.g(poPremii + "/" + potwor.getMaxMorale(), Paleta.ZIELEN)),
+                        kosztKomorka(gra.koszt(rPremia))),
+                List.of(Dialog.Linia.tekst("Morale rośnie o 30% wartości maksymalnej. Potwór z niskim morale "
+                        + "może uciec z walki albo odejść z lochu.", Paleta.TEKST)), rPremia));
+        opcje.add(wierszRozkazu(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g("Zwolnij", Paleta.TEKST)),
+                        potwor.czyRanny()
+                                ? Wiersze.komorka("odchodzi; reszta załogi traci morale", Paleta.CZERWIEN)
+                                : Wiersze.komorka(Wiersze.slaby("odchodzi, żołd "),
+                                        Wiersze.k("−" + potwor.getZold() + " dziennie", Paleta.ZIELEN)),
+                        kosztKomorka(gra.koszt(rZwolnij))),
+                List.of(Dialog.Linia.tekst(potwor.czyRanny()
                         ? "Ranny potwór natychmiast opuszcza loch. Reszta załogi traci przez to trochę morale."
-                        : "Potwór natychmiast opuszcza loch i nie pobiera już żołdu.",
-                new Rozkaz.Zwolnienie(potwor)));
-        opcje.add(new Dialog.Opcja("Wróć do listy", "Bez wydawania rozkazu.", true, this::dialogPotwory));
-        dialog = new Dialog(potwor.getImie() + " · " + potwor.nazwaRodzaju(),
-                List.of(wstepRozkazow(), "Siła " + potwor.getSilaAtaku() + ", życie " + potwor.getMaxPunktyZycia()
-                        + ", morale " + potwor.getMorale() + "/" + potwor.getMaxMorale() + ", żołd "
-                        + potwor.getZold() + ", poziom " + potwor.getPoziom() + "."),
-                opcje, this::dialogPotwory);
+                        : "Potwór natychmiast opuszcza loch i nie pobiera już żołdu.", Paleta.TEKST)), rZwolnij));
+        opcje.add(Dialog.Opcja.wiersz(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g("Wróć", Paleta.TEKST)),
+                        Wiersze.komorka("bez rozkazu", Paleta.TEKST_SLABY), Wiersze.komorka("", Paleta.TEKST)),
+                List.of(Dialog.Linia.tekst("Wróć do listy potworów.", Paleta.TEKST)), true, this::dialogPotwory));
+        List<Dialog.Linia> wstep = new ArrayList<>();
+        wstep.add(pasekRozkazow());
+        wstep.add(Dialog.Linia.z(Wiersze.k(Sprite.emoji(potwor) + " ", Paleta.TEKST),
+                Wiersze.g(potwor.getImie(), Paleta.TEKST), Wiersze.slaby(" · " + potwor.nazwaRodzaju() + " · "),
+                Wiersze.k("★" + potwor.getPoziom(), Paleta.ZLOTO)));
+        wstep.add(Dialog.Linia.z(Wiersze.slaby("Siła "), Wiersze.g(String.valueOf(potwor.getSilaAtaku()), Paleta.TEKST),
+                Wiersze.slaby("   Życie "), Wiersze.g(String.valueOf(potwor.getMaxPunktyZycia()), Paleta.TEKST),
+                Wiersze.slaby("   Morale "), Wiersze.g(potwor.getMorale() + "/" + potwor.getMaxMorale(),
+                        Wiersze.kolorUdzialu(potwor.getMorale(), potwor.getMaxMorale())),
+                Wiersze.slaby("   Żołd "), Wiersze.g(String.valueOf(potwor.getZold()), Paleta.ZLOTO)));
+        if (potwor.czyRanny()) {
+            wstep.add(Dialog.Linia.tekst("Ranny: wraca do walki za " + potwor.getDniRekonwalescencji() + " dni.",
+                    Paleta.CZERWIEN));
+        }
+        dialog = Dialog.zLiniami(potwor.getImie() + " · " + potwor.nazwaRodzaju(), wstep, opcje, this::dialogPotwory);
     }
 
     /** Pomoc: w samouczku najpierw bieżąca rada doradcy, potem strony z zasadami. */
@@ -1562,14 +1870,7 @@ public final class Aplikacja {
             strona(Doradca.STRONY, 0, "Zamknij", this::zamknijDialog, this::zamknijDialog);
             return;
         }
-        List<Dialog.Wiersz> wiersze = new ArrayList<>();
-        for (String akapit : rada) {
-            if (!wiersze.isEmpty()) {
-                wiersze.add(new Dialog.Wiersz("", Paleta.TEKST));
-            }
-            wiersze.add(new Dialog.Wiersz(akapit, Paleta.TEKST));
-        }
-        dialog = new Dialog(wiersze, "Doradca · dzień " + gra.getNumerDnia(),
+        dialog = Dialog.zLiniami("Doradca · dzień " + gra.getNumerDnia(), akapity(rada),
                 List.of(new Dialog.Opcja("Rozumiem", "Zamknij i graj dalej.", true, this::zamknijDialog),
                         new Dialog.Opcja("Zasady gry", "Cztery krótkie strony o tym, jak działa loch.", true,
                                 () -> strona(Doradca.STRONY, 0, "Zamknij", this::zamknijDialog, this::zamknijDialog))),
