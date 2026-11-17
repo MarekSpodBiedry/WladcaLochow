@@ -3,8 +3,9 @@ package wladcalochow.model.strategia;
 /** Postawa lochu wobec ataku bohaterów. */
 public enum Postawa {
     PELNA_OBRONA("Pełna obrona", "Walczą wszystkie potwory, które nie kopią złota."),
-    ODWOD("Odwód", "Jedna trzecia najbardziej doświadczonych wojowników czeka z tyłu. Wchodzą, gdy pierwsza linia "
-            + "stopnieje o połowę, i od razu uderzają. Chroni weteranów, ale pierwsza linia jest słabsza."),
+    ODWOD("Odwód", "Jedna trzecia najbardziej doświadczonych wojowników czeka w ukryciu. Wchodzą, gdy pierwsza linia "
+            + "stopnieje o jedną trzecią: uderzają z zaskoczenia, a bohaterowie tracą ducha. Zwiad bohaterów nie widzi "
+            + "ukrytych, więc następne ataki są słabsze. Ceną jest słabsza pierwsza linia."),
     PRZEKUPSTWO("Przekupstwo", "Płacisz bohaterom, żeby odeszli bez walki. Gdy złota zabraknie, loch broni się normalnie.");
 
     private final String nazwa;

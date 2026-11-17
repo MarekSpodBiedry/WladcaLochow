@@ -11,6 +11,7 @@ import wladcalochow.model.Loch;
 import wladcalochow.model.MinisterFinansow;
 import wladcalochow.model.MinisterPracy;
 import wladcalochow.model.Potwor;
+import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.RaportZwiadu;
 
 /** Losuje to, co przynosi kolejny dzień. Trudność rośnie z numerem dnia i bogactwem skarbca. */
@@ -54,7 +55,8 @@ public final class GeneratorZdarzen {
             bohaterowie = List.of(giermek);
             raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
         } else {
-            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(), los);
+            bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(),
+                    loch.getPostawa() == Postawa.ODWOD, los);
             raport = zwiad(bohaterowie, los, loch.mnoznikLapowki());
         }
         Set<String> ministrowie = new HashSet<>();
@@ -73,6 +75,14 @@ public final class GeneratorZdarzen {
      * Dzięki temu dobrze prowadzony loch może trwać bez końca, ale pech i złe decyzje go niszczą.
      */
     static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, Random los) {
+        return losujBohaterow(numer, zloto, potwory, false, los);
+    }
+
+    /**
+     * Jak wyżej. Gdy loch stoi w postawie Odwód, zwiad bohaterów nie widzi ukrytych wojowników: loch wygląda
+     * na słabszy i przyciąga mniejszy atak (ceną jest słabsza pierwsza linia w walce).
+     */
+    static List<Bohater> losujBohaterow(int numer, int zloto, List<Potwor> potwory, boolean ukrytyOdwod, Random los) {
         List<Bohater> bohaterowie = new ArrayList<>();
         if (numer <= DNI_SPOKOJU || los.nextDouble() < 0.20) {
             return bohaterowie;
@@ -80,7 +90,8 @@ public final class GeneratorZdarzen {
         Set<String> zajete = new HashSet<>();
         // Walczą mniej więcej dwie trzecie załogi (reszta kopie).
         // Liczą się tylko zdolni do walki i pracy: ranni nie bronią lochu (ale przyciągają bohaterów, patrz niżej).
-        double obrona = DzienGry.wartoscOddzialu(potwory.stream().filter(p -> !p.czyRanny()).toList()) * 2.0 / 3.0;
+        double obrona = DzienGry.wartoscOddzialu(potwory.stream().filter(p -> !p.czyRanny()).toList()) * 2.0 / 3.0
+                * (ukrytyOdwod ? 1 - ODWOD_UKRYWA : 1);
         double rozwoj = Math.min(1.0, numer / (double) DNI_DO_PELNEJ_GROZY);
         // Po osiągnięciu pełnej grozy rośnie ona dalej, bardzo powoli: nawet najlepszy loch kiedyś trafi na swój limit.
         double pozno = Math.max(0, numer - DNI_DO_PELNEJ_GROZY) * WZROST_GROZY_NA_DZIEN;
@@ -116,6 +127,8 @@ public final class GeneratorZdarzen {
     /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
     static final double GROZA_POCZATKOWA = 0.35;
     static final double GROZA_PELNA = 0.80;
+    /** Jaką część siły obrońców ukrywa przed zwiadem bohaterów postawa Odwód. */
+    static final double ODWOD_UKRYWA = 0.25;
     /** O ile silniejszy jest atak za każdego ciężko rannego potwora w lochu. */
     static final double RANNI_PRZYCIAGAJA = 0.06;
     /** O ile rośnie groza z każdym dniem po {@link #DNI_DO_PELNEJ_GROZY}. */

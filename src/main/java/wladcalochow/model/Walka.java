@@ -17,6 +17,8 @@ public class Walka implements PoleWalki, Serializable {
 
     public static final double SZANSA_TRAFIENIA = 0.85;
     public static final int MAX_RUND = 60;
+    /** O jaką część maksymalnego morale spada morale bohaterów, gdy uderza odwód. */
+    public static final double SPADEK_MORALE_PRZY_ZASADZCE = 0.40;
 
     private final List<Bohater> bohaterowie;
     private final List<Potwor> obroncy;
@@ -136,8 +138,8 @@ public class Walka implements PoleWalki, Serializable {
             zdarzenia.add(new Zdarzenie.KoniecWalki(true));
             return true;
         }
-        // Odwód wkracza, gdy pierwsza linia stopnieje do połowy (albo całkiem padnie), i od razu uderza.
-        if (!odwod.isEmpty() && aktywni(obroncy).size() * 2 <= liczebnoscPierwszejLinii) {
+        // Odwód wkracza, gdy pierwsza linia stopnieje o jedną trzecią (albo całkiem padnie), i od razu uderza.
+        if (!odwod.isEmpty() && aktywni(obroncy).size() * 3 <= liczebnoscPierwszejLinii * 2) {
             wprowadzOdwod(zdarzenia);
             return rozstrzygnij(zdarzenia);
         }
@@ -156,6 +158,10 @@ public class Walka implements PoleWalki, Serializable {
         odwod.clear();
         zdarzenia.add(new Zdarzenie.Informacja("Pierwsza linia słabnie. Odwód wkracza do walki i uderza z zaskoczenia!",
                 Zdarzenie.Ton.NAGLOWEK));
+        // Zasadzka: bohaterowie, pewni zwycięstwa, nagle widzą świeże siły i tracą ducha.
+        for (Bohater bohater : aktywni(bohaterowie)) {
+            bohater.zmienMorale(-(int) Math.round(bohater.getMaxMorale() * SPADEK_MORALE_PRZY_ZASADZCE));
+        }
         for (Potwor potwor : wchodzacy) {
             if (aktywni(bohaterowie).isEmpty()) {
                 break;

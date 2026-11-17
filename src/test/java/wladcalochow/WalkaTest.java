@@ -137,7 +137,7 @@ class WalkaTest {
     }
 
     @Test
-    void odwodWchodziGdyPierwszaLiniaStopniejeDoPolowyIUderzaOdRazu() {
+    void odwodWchodziGdyPierwszaLiniaStopniejeOTrzeciaIUderzaOdRazu() {
         Rycerz rycerz = new Rycerz("Sir", 100, 2000, 2000, 0);
         List<Goblin> linia = new ArrayList<>();
         for (int i = 0; i < 4; i++) {

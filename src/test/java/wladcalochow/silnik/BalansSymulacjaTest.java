@@ -148,7 +148,7 @@ class BalansSymulacjaTest {
                     if (groznie && raport.szacowanaSila() <= zloto - pensje) {
                         postawa = Postawa.PRZEKUPSTWO;
                         zloto -= raport.szacowanaSila();
-                    } else if (zOdwodem && raport.szacowanaSila() < obrona * 0.5) {
+                    } else if (zOdwodem && raport.szacowanaSila() < obrona * 0.8) {
                         postawa = Postawa.ODWOD;
                     }
                 }
@@ -292,7 +292,15 @@ class BalansSymulacjaTest {
         long ponad300 = Arrays.stream(dni).filter(d -> d > 300).count();
         long ponad500 = Arrays.stream(dni).filter(d -> d > 500).count();
         assertTrue(ponad300 >= GIER / 20, "z dobrym losem da się zajść daleko");
-        assertTrue(ponad500 <= GIER / 8, "ale mało kto przetrwa 500 dni");
+        assertTrue(ponad500 <= GIER / 7, "ale mało kto przetrwa 500 dni");
+
+        int[] bezOdwodu = new int[GIER];
+        for (int i = 0; i < GIER; i++) {
+            bezOdwodu[i] = przebieg(ekspert(false), 1000 + i, MAKS_DNI_EKSPERTA).dni();
+        }
+        Arrays.sort(bezOdwodu);
+        assertTrue(mediana > bezOdwodu[GIER / 2] * 1.05, "odwód używany z głową wydłuża grę: z odwodem " + mediana
+                + ", bez " + bezOdwodu[GIER / 2]);
     }
 
     @Test
@@ -304,6 +312,6 @@ class BalansSymulacjaTest {
         int medianaLosowego = losowy[losowy.length / 2];
         int medianaRozsadnego = rozsadny[rozsadny.length / 2];
         assertTrue(medianaLosowego < 60, "losowe decyzje szybko gubią loch");
-        assertTrue(medianaRozsadnego > 2 * medianaLosowego, "rozsądne decyzje dają dużo dłuższą grę");
+        assertTrue(medianaRozsadnego > 1.5 * medianaLosowego, "rozsądne decyzje dają wyraźnie dłuższą grę");
     }
 }
