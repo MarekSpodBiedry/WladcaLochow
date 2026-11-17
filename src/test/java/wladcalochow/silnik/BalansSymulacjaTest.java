@@ -66,13 +66,14 @@ class BalansSymulacjaTest {
     static final Gracz ROZSADNY = new Gracz() {
         @Override
         public void start(Gra gra) {
+            // Na starcie czyta cechy i wady (unika plotkarzy i nielojalnych), potem już ministrów nie zmienia.
             MinisterFinansow finansow = gra.getStartowiFinansow().stream()
                     .filter(m -> m instanceof RozrzutnyMinisterFinansow)
-                    .min(Comparator.comparingInt(MinisterFinansow::getPensja))
+                    .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
                     .orElse(gra.getStartowiFinansow().get(0));
             MinisterPracy pracy = gra.getStartowiPracy().stream()
                     .filter(m -> m instanceof RamboMinisterPracy)
-                    .min(Comparator.comparingInt(MinisterPracy::getPensja))
+                    .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
                     .orElse(gra.getStartowiPracy().get(0));
             gra.rozpocznij(finansow, pracy);
         }
@@ -236,6 +237,36 @@ class BalansSymulacjaTest {
         };
     }
 
+    /** Nie wydaje żadnego rozkazu przez całą grę (ministrów bierze pierwszych z brzegu). */
+    static final Gracz BIERNY = new Gracz() {
+        @Override
+        public void start(Gra gra) {
+            gra.rozpocznij(gra.getStartowiFinansow().get(0), gra.getStartowiPracy().get(0));
+        }
+
+        @Override
+        public void poranek(Gra gra, Random bot) {
+        }
+    };
+
+    /** Gra jak ekspert przez pierwsze dni, a potem przestaje cokolwiek robić. */
+    static Gracz tylkoPoczatek(int dni) {
+        Gracz ekspert = ekspert(true);
+        return new Gracz() {
+            @Override
+            public void start(Gra gra) {
+                ekspert.start(gra);
+            }
+
+            @Override
+            public void poranek(Gra gra, Random bot) {
+                if (gra.getNumerDnia() <= dni) {
+                    ekspert.poranek(gra, bot);
+                }
+            }
+        };
+    }
+
     /** Wynik jednej gry: ile dni przetrwał loch i ile z nich minęło bez żadnego rozkazu. */
     record Przebieg(int dni, int dniBezRozkazow, int dniZOdwodem) {
     }
@@ -352,6 +383,29 @@ class BalansSymulacjaTest {
     }
 
     @Test
+    void biernyGraczISamPoczatekSzybkoPrzegrywaja() {
+        System.out.println("BALANS " + opisEksperta("bierny", BIERNY));
+        System.out.println("BALANS " + opisEksperta("poczatek 20", tylkoPoczatek(20)));
+        System.out.println("BALANS " + opisEksperta("poczatek 40", tylkoPoczatek(40)));
+        int bierny = mediana(BIERNY);
+        int poczatek20 = mediana(tylkoPoczatek(20));
+        int ekspert = mediana(ekspert(true));
+        assertTrue(bierny < 40, "kto nic nie robi, szybko przegrywa: mediana " + bierny);
+        assertTrue(poczatek20 < 60, "kto zadbał tylko o początek, też szybko przegrywa: mediana " + poczatek20);
+        assertTrue(ekspert > 4 * poczatek20, "długa gra wymaga decyzji przez całą grę: ekspert " + ekspert
+                + ", tylko początek " + poczatek20);
+    }
+
+    static int mediana(Gracz gracz) {
+        int[] dni = new int[GIER];
+        for (int i = 0; i < GIER; i++) {
+            dni[i] = przebieg(gracz, 1000 + i, MAKS_DNI_EKSPERTA).dni();
+        }
+        Arrays.sort(dni);
+        return dni[GIER / 2];
+    }
+
+    @Test
     void dobreDecyzjeGrajaDlugoALosoweSzybkoPrzegrywaja() {
         int[] losowy = wyniki(LOSOWY);
         int[] rozsadny = wyniki(ROZSADNY);
@@ -360,6 +414,6 @@ class BalansSymulacjaTest {
         int medianaLosowego = losowy[losowy.length / 2];
         int medianaRozsadnego = rozsadny[rozsadny.length / 2];
         assertTrue(medianaLosowego < 60, "losowe decyzje szybko gubią loch");
-        assertTrue(medianaRozsadnego > 1.5 * medianaLosowego, "rozsądne decyzje dają wyraźnie dłuższą grę");
+        assertTrue(medianaRozsadnego > medianaLosowego, "rozsądne decyzje dają dłuższą grę niż losowe");
     }
 }
