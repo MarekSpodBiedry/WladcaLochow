@@ -34,8 +34,13 @@ class AktualizacjeTest {
     @Test
     void aktualizacjaNaWindowsOtwieraInstalatorWNowymOknie() {
         List<String> polecenie = Uruchamiacz.polecenieAktualizacji();
-        assertEquals(List.of("cmd.exe", "/c", "start"), polecenie.subList(0, 3));
+        // cmd.exe z pełną ścieżką: samo "cmd.exe" u jednego gracza kończyło się "CreateProcess error=5".
+        assertTrue(polecenie.get(0).toLowerCase().endsWith("\\system32\\cmd.exe"), polecenie.get(0));
+        assertEquals(List.of("/c", "start"), polecenie.subList(1, 3));
         assertTrue(polecenie.contains("powershell.exe"));
+        List<String> zapasowe = Uruchamiacz.polecenieAktualizacjiPrzezPowerShella();
+        assertTrue(zapasowe.get(0).toLowerCase().endsWith("\\powershell.exe"), zapasowe.get(0));
+        assertTrue(zapasowe.get(zapasowe.size() - 1).contains(Aktualizacje.POLECENIE_INSTALATORA_BEZPOSREDNIE));
         // Przycisk „Aktualizuj” bierze instalator prosto z GitHuba, bez zależności od krótkiego linku.
         assertEquals("irm https://raw.githubusercontent.com/MarekSpodBiedry/WladcaLochow/main/install.ps1 | iex",
                 polecenie.get(polecenie.size() - 1));

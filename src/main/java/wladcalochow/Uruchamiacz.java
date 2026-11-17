@@ -173,31 +173,55 @@ public final class Uruchamiacz {
         return false;
     }
 
+    /** Folder systemowy Windows (zwykle C:\Windows\System32), z którego bierzemy cmd.exe i PowerShella. */
+    private static String system32() {
+        String windows = System.getenv("SystemRoot");
+        return (windows == null || windows.isBlank() ? "C:\\Windows" : windows) + "\\System32";
+    }
+
     /** Polecenie otwierające na Windows nowe okno PowerShella z instalatorem, który aktualizuje grę. */
     public static List<String> polecenieAktualizacji() {
-        return List.of("cmd.exe", "/c", "start", TYTUL, "powershell.exe", "-NoProfile", "-ExecutionPolicy",
+        return polecenieAktualizacji(system32() + "\\cmd.exe");
+    }
+
+    static List<String> polecenieAktualizacji(String cmd) {
+        return List.of(cmd, "/c", "start", TYTUL, "powershell.exe", "-NoProfile", "-ExecutionPolicy",
                 "Bypass", "-Command", Aktualizacje.POLECENIE_INSTALATORA_BEZPOSREDNIE);
     }
 
+    /** Zapasowa droga bez cmd.exe: PowerShell sam otwiera nowe okno PowerShella z instalatorem. */
+    static List<String> polecenieAktualizacjiPrzezPowerShella() {
+        String powershell = system32() + "\\WindowsPowerShell\\v1.0\\powershell.exe";
+        String instalator = Aktualizacje.POLECENIE_INSTALATORA_BEZPOSREDNIE.replace("'", "''");
+        return List.of(powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command",
+                "Start-Process -FilePath '" + powershell + "' -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass',"
+                        + "'-Command','" + instalator + "'");
+    }
+
     /**
-     * Uruchamia instalator w nowym oknie.
+     * Uruchamia instalator w nowym oknie. Próbuje kolejno: cmd.exe z pełną ścieżką, PowerShella z pełną
+     * ścieżką, cmd.exe szukany po PATH.
      *
-     * @return pusty wynik, gdy instalator wystartował; w przeciwnym razie powód, który warto pokazać graczowi
+     * @return pusty wynik, gdy instalator wystartował; w przeciwnym razie błędy wszystkich prób, do pokazania graczowi
      */
     public static Optional<String> uruchomAktualizacje() {
         if (wykryjSystem() != SystemOperacyjny.WINDOWS) {
             return Optional.of("samoczynna aktualizacja działa tylko na Windows");
         }
-        try {
-            new ProcessBuilder(polecenieAktualizacji())
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start();
-            return Optional.empty();
-        } catch (IOException | RuntimeException e) {
-            // Np. "CreateProcess error=1455": Windowsowi brakuje pamięci, zwykle przez pełny dysk.
-            return Optional.of(String.valueOf(e.getMessage()));
+        List<String> bledy = new ArrayList<>();
+        for (List<String> polecenie : List.of(polecenieAktualizacji(), polecenieAktualizacjiPrzezPowerShella(),
+                polecenieAktualizacji("cmd.exe"))) {
+            try {
+                new ProcessBuilder(polecenie)
+                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                        .redirectError(ProcessBuilder.Redirect.DISCARD)
+                        .start();
+                return Optional.empty();
+            } catch (IOException | RuntimeException e) {
+                bledy.add(String.valueOf(e.getMessage()));
+            }
         }
+        return Optional.of(String.join("; ", bledy));
     }
 
     /**
