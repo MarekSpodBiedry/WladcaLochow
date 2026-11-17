@@ -95,8 +95,8 @@ class BalansSymulacjaTest {
                 zloto -= raport.szacowanaSila();
             }
 
-            for (Ulepszenie u : new Ulepszenie[] {Ulepszenie.PULAPKI, Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI,
-                    Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI, Ulepszenie.KOPALNIA, Ulepszenie.ZAMEK_SKARBCA}) {
+            // Na przemian pułapki i kopalnia do końca, zamek na koniec.
+            for (Ulepszenie u : new Ulepszenie[] {Ulepszenie.PULAPKI, Ulepszenie.KOPALNIA, Ulepszenie.ZAMEK_SKARBCA}) {
                 Rozkaz zakup = new Rozkaz.ZakupUlepszenia(u);
                 if (gra.powodOdmowy(zakup) == null && gra.koszt(zakup) <= zloto - rezerwa) {
                     wydaj(gra, zakup);
@@ -202,9 +202,11 @@ class BalansSymulacjaTest {
                 }
                 wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
 
-                for (Ulepszenie u : new Ulepszenie[] {Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI, Ulepszenie.PULAPKI,
-                        Ulepszenie.PULAPKI, Ulepszenie.KOPALNIA, Ulepszenie.KOPALNIA, Ulepszenie.ZAMEK_SKARBCA,
-                        Ulepszenie.ZAMEK_SKARBCA, Ulepszenie.ZAMEK_SKARBCA}) {
+                // Najtańszy dostępny poziom spośród kopalni i pułapek, potem zamek.
+                List<Ulepszenie> kolejnosc = new ArrayList<>(List.of(Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI));
+                kolejnosc.sort(Comparator.comparingInt(u -> loch.poziom(u)));
+                kolejnosc.add(Ulepszenie.ZAMEK_SKARBCA);
+                for (Ulepszenie u : kolejnosc) {
                     Rozkaz zakup = new Rozkaz.ZakupUlepszenia(u);
                     if (gra.powodOdmowy(zakup) == null && gra.koszt(zakup) <= zloto - pensje) {
                         wydaj(gra, zakup);
@@ -390,8 +392,13 @@ class BalansSymulacjaTest {
         int bierny = mediana(BIERNY);
         int poczatek20 = mediana(tylkoPoczatek(20));
         int ekspert = mediana(ekspert(true));
-        assertTrue(bierny < 40, "kto nic nie robi, szybko przegrywa: mediana " + bierny);
+        int losowy = mediana(LOSOWY);
+        int rozsadny = mediana(ROZSADNY);
+        assertTrue(bierny <= losowy * 1.05, "kto nic nie robi, nie gra lepiej niż losowo: bierny " + bierny
+                + ", losowy " + losowy);
         assertTrue(poczatek20 < 60, "kto zadbał tylko o początek, też szybko przegrywa: mediana " + poczatek20);
+        assertTrue(rozsadny >= 1.6 * bierny, "przeciętna gra wyraźnie dłuższa niż bierna: przeciętny " + rozsadny
+                + ", bierny " + bierny);
         assertTrue(ekspert > 4 * poczatek20, "długa gra wymaga decyzji przez całą grę: ekspert " + ekspert
                 + ", tylko początek " + poczatek20);
     }
