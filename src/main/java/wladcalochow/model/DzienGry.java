@@ -166,8 +166,9 @@ public class DzienGry implements Serializable {
             if (skarbiec.wyplac(cena)) {
                 bilans.lapowka(cena);
                 bilans.obrona(BilansDnia.Obrona.PRZEKUPSTWO);
-                zdarzenia.add(new Informacja("Bohaterowie biorą " + cena + " złota łapówki i odchodzą bez walki.",
-                        Ton.ZLOTO));
+                loch.zanotujLapowke();
+                zdarzenia.add(new Informacja("Bohaterowie biorą " + cena + " złota łapówki i odchodzą bez walki. "
+                        + "Następnym razem zażądają więcej.", Ton.ZLOTO));
                 return null;
             }
             zdarzenia.add(new Informacja("Na łapówkę (" + cena + " złota) nie starczyło. Loch musi się bronić.",
@@ -211,9 +212,13 @@ public class DzienGry implements Serializable {
         return walka;
     }
 
-    /** Ile kosztuje przekupienie dzisiejszych bohaterów (po negocjacjach Ministra Finansów). */
+    /**
+     * Ile kosztuje przekupienie dzisiejszych bohaterów: ich wartość, droższa o każdą wcześniejszą łapówkę
+     * bez walki pomiędzy, po negocjacjach Ministra Finansów.
+     */
     public int kosztPrzekupstwa(Loch loch) {
-        return loch.getMinisterFinansow().cenaPoNegocjacjach(wartoscOddzialu(bohaterowie));
+        return loch.getMinisterFinansow().cenaPoNegocjacjach(
+                (int) Math.round(wartoscOddzialu(bohaterowie) * loch.mnoznikLapowki()));
     }
 
     /**

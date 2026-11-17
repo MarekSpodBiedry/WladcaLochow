@@ -48,9 +48,28 @@ public class Loch implements Serializable {
         return Math.max(0, POJEMNOSC - listaPotworow.size());
     }
 
-    /** Udana obrona zeruje licznik porażek, przegrana go zwiększa. */
+    /** Udana obrona zeruje licznik porażek, przegrana go zwiększa. Każda walka zeruje licznik łapówek. */
     public void zanotujWynikObrony(boolean udana) {
         porazkiZRzedu = udana ? 0 : porazkiZRzedu + 1;
+        lapowkiZRzedu = 0;
+    }
+
+    /** Każda kolejna łapówka bez walki pomiędzy jest droższa: bohaterowie wiedzą, że loch płaci. */
+    public static final double DROZEJ_ZA_KOLEJNA_LAPOWKE = 0.5;
+
+    private int lapowkiZRzedu;
+
+    public void zanotujLapowke() {
+        lapowkiZRzedu++;
+    }
+
+    public int getLapowkiZRzedu() {
+        return lapowkiZRzedu;
+    }
+
+    /** Mnożnik ceny łapówki: 1 przy pierwszej, potem +50% za każdą kolejną bez walki pomiędzy. */
+    public double mnoznikLapowki() {
+        return 1 + DROZEJ_ZA_KOLEJNA_LAPOWKE * lapowkiZRzedu;
     }
 
     public int getPorazkiZRzedu() {
