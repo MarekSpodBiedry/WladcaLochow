@@ -150,7 +150,7 @@ public final class GeneratorZdarzen {
     static final double SILA_FALI_MAX = 2.8;
     /** Najmniejsza wartość ataku: nawet pusty loch jest napadany, a z czasem coraz mocniej, do pewnej granicy. */
     static final double MINIMUM_POCZATKOWE = 30;
-    static final double MINIMUM_NA_DZIEN = 5;
+    static final double MINIMUM_NA_DZIEN = 3;
     static final double MINIMUM_POZNE = 450;
     /** Ile złota w skarbcu przyciąga dodatkowy punkt wartości ataku. */
     static final double ZLOTO_NA_PUNKT_ZAGROZENIA = 8;
