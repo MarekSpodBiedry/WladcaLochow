@@ -55,7 +55,7 @@ public final class GeneratorZdarzen {
             raport = new RaportZwiadu(1, 1, giermek.nazwaRodzaju(), DzienGry.wartoscOddzialu(bohaterowie));
         } else {
             bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(), los);
-            raport = zwiad(bohaterowie, los);
+            raport = zwiad(bohaterowie, los, loch.mnoznikLapowki());
         }
         Set<String> ministrowie = new HashSet<>();
         ministrowie.add(loch.getMinisterFinansow().getImie());
@@ -81,9 +81,13 @@ public final class GeneratorZdarzen {
         // Walczą mniej więcej dwie trzecie załogi (reszta kopie).
         double obrona = DzienGry.wartoscOddzialu(potwory) * 2.0 / 3.0;
         double rozwoj = Math.min(1.0, numer / (double) DNI_DO_PELNEJ_GROZY);
-        double mnoznik = (GROZA_POCZATKOWA + (GROZA_PELNA - GROZA_POCZATKOWA) * rozwoj) * (0.75 + 0.5 * los.nextDouble());
+        // Po osiągnięciu pełnej grozy rośnie ona dalej, bardzo powoli: nawet najlepszy loch kiedyś trafi na swój limit.
+        double pozno = Math.max(0, numer - DNI_DO_PELNEJ_GROZY) * WZROST_GROZY_NA_DZIEN;
+        double mnoznik = (GROZA_POCZATKOWA + (GROZA_PELNA - GROZA_POCZATKOWA) * rozwoj + pozno)
+                * (0.75 + 0.5 * los.nextDouble());
         if (los.nextDouble() < SZANSA_FALI) {
-            mnoznik *= SILA_FALI;
+            // Fala ma losową siłę: zwykle da się ją przetrzymać, czasem zmiata nawet silny loch.
+            mnoznik *= SILA_FALI_MIN + (SILA_FALI_MAX - SILA_FALI_MIN) * los.nextDouble();
         }
         double minimum = Math.min(MINIMUM_POZNE, MINIMUM_POCZATKOWE + MINIMUM_NA_DZIEN * numer);
         double cel = Math.max(minimum, obrona * mnoznik) + zloto / ZLOTO_NA_PUNKT_ZAGROZENIA;
@@ -95,6 +99,11 @@ public final class GeneratorZdarzen {
             bohaterowie.add(bohater);
             wartosc += DzienGry.wartoscOddzialu(List.of(bohater));
         }
+        // Gdy dwunastu bohaterów to za mało, przychodzą twardsi: limit liczby nie może chronić silnego lochu.
+        if (wartosc > 0 && wartosc < cel) {
+            double brakuje = cel / wartosc - 1;
+            bohaterowie.forEach(b -> b.zahartuj(brakuje));
+        }
         return bohaterowie;
     }
 
@@ -102,10 +111,13 @@ public final class GeneratorZdarzen {
     static final int DNI_DO_PELNEJ_GROZY = 40;
     /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
     static final double GROZA_POCZATKOWA = 0.40;
-    static final double GROZA_PELNA = 1.15;
+    static final double GROZA_PELNA = 0.90;
+    /** O ile rośnie groza z każdym dniem po {@link #DNI_DO_PELNEJ_GROZY}. */
+    static final double WZROST_GROZY_NA_DZIEN = 0.0005;
     /** Czasem przychodzi fala: atak dużo silniejszy niż zwykle (pech, na który trzeba mieć zapas). */
     static final double SZANSA_FALI = 0.12;
-    static final double SILA_FALI = 1.9;
+    static final double SILA_FALI_MIN = 1.5;
+    static final double SILA_FALI_MAX = 2.8;
     /** Najmniejsza wartość ataku: nawet pusty loch jest napadany, a z czasem coraz mocniej, do pewnej granicy. */
     static final double MINIMUM_POCZATKOWE = 30;
     static final double MINIMUM_NA_DZIEN = 2.5;
@@ -117,7 +129,7 @@ public final class GeneratorZdarzen {
     static final double MAX_HARTOWANIE = 0.40;
 
     /** Zwiad nie jest dokładny: podaje przedział liczebności, czasem jeden rodzaj i szacunek łapówki. */
-    static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los) {
+    static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los, double mnoznikLapowki) {
         int ilu = bohaterowie.size();
         int min = Math.max(0, ilu - los.nextInt(2));
         int max = ilu + los.nextInt(2);
@@ -127,7 +139,7 @@ public final class GeneratorZdarzen {
             if (los.nextDouble() < 0.70) {
                 rodzaj = bohaterowie.get(los.nextInt(ilu)).nazwaRodzaju();
             }
-            szacunek = (int) Math.round(DzienGry.wartoscOddzialu(bohaterowie) * (0.8 + 0.4 * los.nextDouble()));
+            szacunek = (int) Math.round(DzienGry.wartoscOddzialu(bohaterowie) * mnoznikLapowki * (0.8 + 0.4 * los.nextDouble()));
             min = Math.max(1, min);
         }
         return new RaportZwiadu(min, max, rodzaj, szacunek);

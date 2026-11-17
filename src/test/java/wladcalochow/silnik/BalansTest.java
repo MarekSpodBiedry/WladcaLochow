@@ -75,8 +75,9 @@ class BalansTest {
         double naGobliny = sredniAtak(gobliny, 60);
         double naOgry = sredniAtak(ogry, 60);
         assertTrue(naOgry > 2 * naGobliny, "silny loch dostaje mocniejsze ataki: gobliny " + naGobliny + ", ogry " + naOgry);
-        // Atak na ten sam loch nie rośnie bez końca z numerem dnia.
-        assertEquals(sredniAtak(ogry, 60), sredniAtak(ogry, 500), 1.0);
+        // Atak na ten sam loch rośnie z dniami bardzo powoli: po 440 dniach o mniej niż jedną trzecią.
+        double wzrost = sredniAtak(ogry, 500) / sredniAtak(ogry, 60);
+        assertTrue(wzrost > 1.05 && wzrost < 1.33, "powolny wzrost grozy w późnej grze: " + wzrost);
     }
 
     @Test
