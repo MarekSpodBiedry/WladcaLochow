@@ -74,6 +74,25 @@ final class Ekran {
         return sb.toString();
     }
 
+    // ---- odczyt pojedynczej komórki (do rysowania podglądów ekranu jako obrazków) ----
+
+    /** Znak w komórce; pusty napis to druga połowa szerokiego znaku (np. emoji). */
+    String glif(int x, int y) {
+        return glif[y * szer + x];
+    }
+
+    int kolor(int x, int y) {
+        return kolor[y * szer + x];
+    }
+
+    int tlo(int x, int y) {
+        return tlo[y * szer + x];
+    }
+
+    boolean gruby(int x, int y) {
+        return gruby[y * szer + x];
+    }
+
     private boolean widac(int x, int y) {
         return x >= ox0 && x < ox1 && y >= oy0 && y < oy1;
     }
