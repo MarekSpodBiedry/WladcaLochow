@@ -48,6 +48,14 @@ public abstract class Istota implements Serializable {
     /** Nazwa rodzaju istoty, np. "Rycerz" albo "Goblin". */
     public abstract String nazwaRodzaju();
 
+    /**
+     * Ile istota jest warta w walce względem prostego wzoru 2 × siła + życie / 2. Mnożniki rodzajów
+     * wyznacza automat pojedynków (PojedynkiTest), żeby wycena zgadzała się z tym, jak istota naprawdę walczy.
+     */
+    public double mnoznikWartosci() {
+        return 1.0;
+    }
+
     /** Istoty atakujące na odległość działają w rundzie jako pierwsze. */
     public boolean atakujeNaOdleglosc() {
         return false;

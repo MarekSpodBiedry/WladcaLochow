@@ -8,6 +8,12 @@ public class Goblin extends Potwor {
 
     private static final long serialVersionUID = 1L;
 
+    /** Strzela pierwszy i ogłusza, więc w walce jest wart więcej, niż mówi siła i życie. */
+    @Override
+    public double mnoznikWartosci() {
+        return 1.37;
+    }
+
     public static final double SZANSA_OGLUSZENIA = 0.30;
 
     public Goblin(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zold) {

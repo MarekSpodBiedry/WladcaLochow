@@ -8,6 +8,12 @@ public class Ogr extends Potwor {
 
     private static final long serialVersionUID = 1L;
 
+    /** Nie traci morale w walce, więc jest wart więcej, niż mówi siła i życie. */
+    @Override
+    public double mnoznikWartosci() {
+        return 1.09;
+    }
+
     private Istota upatrzonyCel;
 
     public Ogr(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zold) {

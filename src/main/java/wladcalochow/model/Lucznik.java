@@ -10,6 +10,12 @@ public class Lucznik extends Bohater {
 
     private static final long serialVersionUID = 1L;
 
+    /** Strzela pierwszy i dobija najsłabszych, więc jest wart więcej, niż mówi siła i życie. */
+    @Override
+    public double mnoznikWartosci() {
+        return 1.07;
+    }
+
     public Lucznik(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zloto) {
         super(imie, silaAtaku, maxPunktyZycia, maxMorale, zloto);
     }

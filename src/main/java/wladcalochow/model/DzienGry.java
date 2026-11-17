@@ -216,9 +216,14 @@ public class DzienGry implements Serializable {
         return loch.getMinisterFinansow().cenaPoNegocjacjach(wartoscOddzialu(bohaterowie));
     }
 
-    /** Miara siły oddziału bohaterów, od której zależy cena łapówki. */
+    /**
+     * Miara siły oddziału: od niej zależy cena łapówki i siła ataku na loch. Prosty wzór 2 × siła + życie / 2
+     * jest poprawiony mnożnikiem rodzaju (np. gobliny ogłuszają, ogry nie tracą morale).
+     */
     public static int wartoscOddzialu(List<? extends Istota> oddzial) {
-        return oddzial.stream().mapToInt(b -> 2 * b.getSilaAtaku() + b.getMaxPunktyZycia() / 2).sum();
+        return (int) Math.round(oddzial.stream()
+                .mapToDouble(b -> (2 * b.getSilaAtaku() + b.getMaxPunktyZycia() / 2.0) * b.mnoznikWartosci())
+                .sum());
     }
 
     /** Skutki zakończonej walki: plądrowanie, polegli, doświadczenie weteranów. */

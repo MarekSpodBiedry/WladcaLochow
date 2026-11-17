@@ -156,7 +156,7 @@ class DzienGryTest {
         DzienGry dzien = dzien(0, List.of(), List.of(rycerz));
         dzien.rozegrajPoranek(loch, new Random(1));
         int cena = dzien.kosztPrzekupstwa(loch);
-        assertEquals(2 * 16 + 80 / 2, cena);
+        assertEquals(Math.round((2 * 16 + 80 / 2) * rycerz.mnoznikWartosci()), cena, "wartość rycerza z mnożnikiem rodzaju");
         assertNull(dzien.przygotujObrone(loch, new Random(1), new ArrayList<>()));
         assertEquals(1000 - cena, loch.getSkarbiec().getZloto());
         assertEquals(0, loch.getPorazkiZRzedu());

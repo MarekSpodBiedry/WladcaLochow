@@ -5,6 +5,12 @@ public class Ork extends Potwor {
 
     private static final long serialVersionUID = 1L;
 
+    /** Ucieka przy 20% życia, więc jest wart odrobinę mniej, niż mówi siła i życie. */
+    @Override
+    public double mnoznikWartosci() {
+        return 0.97;
+    }
+
     public Ork(String imie, int silaAtaku, int maxPunktyZycia, int maxMorale, int zold) {
         super(imie, silaAtaku, maxPunktyZycia, maxMorale, zold);
     }

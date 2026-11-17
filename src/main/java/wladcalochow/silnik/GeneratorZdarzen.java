@@ -101,8 +101,8 @@ public final class GeneratorZdarzen {
     /** Po tylu dniach groza ataków osiąga pełny poziom względem siły lochu. */
     static final int DNI_DO_PELNEJ_GROZY = 40;
     /** Wartość bohaterów jako ułamek wartości obrońców: na początku gry i po {@link #DNI_DO_PELNEJ_GROZY} dniach. */
-    static final double GROZA_POCZATKOWA = 0.45;
-    static final double GROZA_PELNA = 1.30;
+    static final double GROZA_POCZATKOWA = 0.40;
+    static final double GROZA_PELNA = 1.15;
     /** Czasem przychodzi fala: atak dużo silniejszy niż zwykle (pech, na który trzeba mieć zapas). */
     static final double SZANSA_FALI = 0.12;
     static final double SILA_FALI = 1.9;
