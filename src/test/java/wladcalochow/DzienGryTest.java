@@ -184,7 +184,7 @@ class DzienGryTest {
         DzienGry dzien = dzien(0, List.of(), List.of(rycerz));
         dzien.rozegrajPoranek(loch, new Random(1));
         dzien.przygotujObrone(loch, new Random(1), new ArrayList<>());
-        assertEquals(80, rycerz.getPunktyZycia());
+        assertEquals(100 - Math.round(100 * 2 * Ulepszenie.PULAPKI_NA_POZIOM), rycerz.getPunktyZycia());
         assertEquals(90, rycerz.getMorale(), "pułapka nie obniża morale");
     }
 

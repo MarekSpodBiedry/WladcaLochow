@@ -234,9 +234,10 @@ public class DzienGry implements Serializable {
         int pulapki = loch.poziom(Ulepszenie.PULAPKI);
         if (pulapki > 0) {
             for (Bohater bohater : bohaterowie) {
-                bohater.zran((int) Math.round(bohater.getMaxPunktyZycia() * 0.10 * pulapki));
+                bohater.zran((int) Math.round(bohater.getMaxPunktyZycia() * Ulepszenie.PULAPKI_NA_POZIOM * pulapki));
             }
-            zdarzenia.add(new Informacja("Pułapki ranią bohaterów (-" + 10 * pulapki + "% życia).", Ton.DOBRY));
+            zdarzenia.add(new Informacja("Pułapki ranią bohaterów (-" + Math.round(Ulepszenie.PULAPKI_NA_POZIOM * 100 * pulapki)
+                    + "% życia).", Ton.DOBRY));
         }
 
         List<Potwor> wojownicy = loch.wojownicy();

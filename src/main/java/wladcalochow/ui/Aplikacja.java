@@ -502,13 +502,12 @@ public final class Aplikacja {
         }
         linia(e, tx, y + 9, tw, "Limit rekrutacji: " + loch.getLimitRekrutacji() + "% skarbca", Paleta.TEKST,
                 false);
+        // Poziomy ulepszeń liczbami (pięć kratek na każde ulepszenie nie mieści się w najwęższym oknie).
         int ux = tx;
         for (Ulepszenie ulepszenie : Ulepszenie.values()) {
             ux = e.pisz(ux, y + 10, skrotUlepszenia(ulepszenie) + " ", Paleta.TEKST_SLABY);
-            for (int i = 0; i < Ulepszenie.MAX_POZIOM; i++) {
-                boolean jest = i < loch.poziom(ulepszenie);
-                ux = e.pisz(ux, y + 10, jest ? "■" : "□", jest ? Paleta.TURKUS : Paleta.TEKST_SLABY);
-            }
+            int poziom = loch.poziom(ulepszenie);
+            ux = e.pisz(ux, y + 10, poziom + "/" + Ulepszenie.MAX_POZIOM, poziom > 0 ? Paleta.TURKUS : Paleta.TEKST_SLABY);
             ux += 2;
         }
 
