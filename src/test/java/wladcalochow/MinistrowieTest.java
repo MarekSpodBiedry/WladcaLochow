@@ -46,12 +46,15 @@ class MinistrowieTest {
     }
 
     @Test
-    void ramboBierzeNajsilniejszychIRezygnujeGdyGoNieStac() {
+    void ramboBierzeNajsilniejszychNaKtorychGoStac() {
         MinisterPracy rambo = new RamboMinisterPracy("Rambo", 10, 0, 0);
-        // Ogr (40) mieści się w budżecie 60, ork (25) już nie, więc Rambo rezygnuje mimo taniego goblina.
-        assertEquals(List.of(ogr), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 60));
+        // Ogr (40) mieści się w budżecie 60, ork (25) już nie, ale tani goblin tak: Rambo go bierze.
+        // Zmiana względem opisu z zajęć: tam Rambo rezygnował i przy małym budżecie nie zatrudniał nikogo,
+        // przez co loch wymierał (gra Marka, 18.11.2026: 11 dni bez rekrutacji).
+        assertEquals(List.of(ogr, goblin), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 60));
         assertEquals(List.of(ogr, ork, goblin), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 75));
-        assertEquals(List.of(), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 39));
+        assertEquals(List.of(ork, goblin), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 39));
+        assertEquals(List.of(goblin), rambo.wybierzDoZatrudnienia(List.of(goblin, ork, ogr), 20));
     }
 
     @Test

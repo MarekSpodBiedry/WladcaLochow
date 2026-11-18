@@ -30,9 +30,11 @@ public class RamboMinisterPracy extends MinisterPracy {
         ranking.sort(Comparator.comparingInt(Potwor::moc).reversed());
         List<Potwor> wybrani = new ArrayList<>();
         int pozostalo = budzet;
+        // Od najsilniejszego; na kogo nie starcza budżetu, tego pomija i patrzy na następnego.
+        // (Dawniej przerywał: gdy nie było go stać na ogra, nie brał nikogo, nawet taniego goblina.)
         for (Potwor kandydat : ranking) {
             if (kandydat.getZold() > pozostalo) {
-                break;
+                continue;
             }
             pozostalo -= kandydat.getZold();
             wybrani.add(kandydat);

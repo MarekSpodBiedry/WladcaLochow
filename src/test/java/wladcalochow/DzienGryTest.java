@@ -90,15 +90,16 @@ class DzienGryTest {
         Goblin tani = new Goblin("Tani", 7, 20, 40, 10);
         DzienGry dzien = dzien(50, List.of(drogi, tani), List.of());
         dzien.rozegrajPoranek(loch, new Random(1));
-        // 150 złota, żołd załogi 30, więc budżet 120: Rambo chce najpierw ogra za 200 i rezygnuje.
-        assertEquals(150, loch.getSkarbiec().getZloto());
-        assertEquals(1, loch.getListaPotworow().size());
+        // 150 złota, żołd załogi 30, więc budżet 120: na ogra za 200 Rambo nie stać, więc bierze goblina za 10.
+        assertEquals(140, loch.getSkarbiec().getZloto());
+        assertTrue(loch.getListaPotworow().contains(tani));
 
         loch.setMinisterPracy(new BylejakiMinisterPracy("Byle", 0, 0, 0));
-        DzienGry drugi = dzien(0, List.of(drogi, tani), List.of());
+        Goblin drugiTani = new Goblin("Drugi", 7, 20, 40, 10);
+        DzienGry drugi = dzien(0, List.of(drogi, drugiTani), List.of());
         drugi.rozegrajPoranek(loch, new Random(1));
-        assertEquals(140, loch.getSkarbiec().getZloto(), "Bylejaki pomija ogra i bierze goblina za 10");
-        assertTrue(loch.getListaPotworow().contains(tani));
+        assertEquals(130, loch.getSkarbiec().getZloto(), "Bylejaki pomija ogra i bierze goblina za 10");
+        assertTrue(loch.getListaPotworow().contains(drugiTani));
     }
 
     @Test
