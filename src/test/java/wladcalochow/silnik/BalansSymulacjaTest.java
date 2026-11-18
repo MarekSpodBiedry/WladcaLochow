@@ -487,6 +487,141 @@ class BalansSymulacjaTest {
         }
     }
 
+    /*
+     * Człowiek z podpowiedziami: nic nie liczy, czyta tylko to, co gra pokazuje słowami i znakami.
+     * Ocena ataku decyduje o postawie (groźny: łapówka, słabszy: odwód), kupuje wszystko, na co go stać,
+     * ministrów wybiera po cesze i wadzie i ich nie zmienia, a przy pełnym lochu robi miejsce dla silniejszych.
+     *
+     * Przełączniki to warianty zmierzone 18.11.2026 (mediana dni; ekspert 334, bierny 42):
+     * zapas na pensje i żołd 87, zapas na pensje 98, bez zapasu 153 (wydane złoto ściąga słabsze ataki);
+     * rezerwa na łapówkę 118; wymiana ministrów 129; łapówka przy „wyrównanym” bez zysku;
+     * zwalnianie najsłabszego dla 2× silniejszego kandydata 214. Domyślne ustawienia to najlepszy wariant.
+     */
+    static int ZAPAS = 2;
+    static boolean LAP_WYROWNANY = false;
+    static boolean ROZRZUTNY = false;
+    static boolean WYROWNANY_ODWOD = false;
+    static boolean WYMIANA = false;
+    static boolean ZWALNIA = true;
+
+    static final Gracz Z_PODPOWIEDZIAMI = new Gracz() {
+        @Override
+        public void start(Gra gra) {
+            MinisterFinansow f = gra.getStartowiFinansow().stream()
+                    .filter(x -> !ROZRZUTNY || x instanceof RozrzutnyMinisterFinansow)
+                    .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
+                    .orElse(gra.getStartowiFinansow().get(0));
+            MinisterPracy m = gra.getStartowiPracy().stream()
+                    .max(Comparator.comparingInt(x -> ocena(x.getCecha(), x.getWada())))
+                    .orElse(gra.getStartowiPracy().get(0));
+            gra.rozpocznij(f, m);
+        }
+
+        private boolean starczy(Gra gra, Rozkaz r) {
+            if (gra.powodOdmowy(r) != null) {
+                return false;
+            }
+            if (ZAPAS == 3) {
+                // Kupuje wszystko, co nie ma ✖ (żółte „!” przy żołdzie akceptuje).
+                return gra.brakNaKonieczne(gra.koszt(r)) == 0;
+            }
+            int pensje = gra.kosztyDnia() - gra.getLoch().dziennyKosztZoldu();
+            int zapas = ZAPAS == 0 ? gra.kosztyDnia() : ZAPAS == 1 ? pensje : 0;
+            return gra.getLoch().getSkarbiec().getZloto() - gra.koszt(r) >= zapas;
+        }
+
+        private void wydaj(Gra gra, Rozkaz r) {
+            if (gra.getDzien().maRozkazy() && gra.powodOdmowy(r) == null) {
+                gra.wykonajRozkaz(r);
+            }
+        }
+
+        @Override
+        public void poranek(Gra gra, Random bot) {
+            Loch loch = gra.getLoch();
+            wladcalochow.model.strategia.OcenaAtaku ocena = gra.ocenaAtaku();
+            int lapowka = gra.getDzien().getRaport().szacowanaSila();
+            Postawa postawa = switch (ocena) {
+                case GROZNY -> gra.getLoch().getSkarbiec().getZloto() >= lapowka ? Postawa.PRZEKUPSTWO : Postawa.PELNA_OBRONA;
+                case WYROWNANY -> LAP_WYROWNANY && gra.getLoch().getSkarbiec().getZloto() >= lapowka
+                        ? Postawa.PRZEKUPSTWO : WYROWNANY_ODWOD ? Postawa.ODWOD : Postawa.PELNA_OBRONA;
+                case SLABSZY -> Postawa.ODWOD;
+                default -> Postawa.PELNA_OBRONA;
+            };
+            wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
+            wydaj(gra, new Rozkaz.LimitRekrutacji(100));
+            // Wymiana ministra, gdy w tabeli stoi wyraźnie lepszy (cecha i wada widać w oknie) i jest ✔.
+            if (WYMIANA) {
+                MinisterFinansow mf = loch.getMinisterFinansow();
+                for (MinisterFinansow k : gra.getDzien().getKandydaciFinansow()) {
+                    Rozkaz r = new Rozkaz.ZmianaMinistraFinansow(k);
+                    if (gra.getNastepnyMinisterFinansow() == null
+                            && ocena(k.getCecha(), k.getWada()) >= ocena(mf.getCecha(), mf.getWada()) + 2 && starczy(gra, r)) {
+                        wydaj(gra, r);
+                        break;
+                    }
+                }
+                MinisterPracy mp = loch.getMinisterPracy();
+                for (MinisterPracy k : gra.getDzien().getKandydaciPracy()) {
+                    Rozkaz r = new Rozkaz.ZmianaMinistraPracy(k);
+                    if (gra.getNastepnyMinisterPracy() == null
+                            && ocena(k.getCecha(), k.getWada()) >= ocena(mp.getCecha(), mp.getWada()) + 2 && starczy(gra, r)) {
+                        wydaj(gra, r);
+                        break;
+                    }
+                }
+            }
+            // Miejsce dla silniejszych: pełny loch, a w kolejce stoi ktoś wyraźnie mocniejszy od najsłabszego.
+            if (ZWALNIA) {
+                int najlepszy = gra.getDzien().getKandydaci().stream().mapToInt(Potwor::moc).max().orElse(0);
+                Potwor najslabszy = loch.getListaPotworow().stream().min(Comparator.comparingInt(Potwor::moc)).orElse(null);
+                if (najslabszy != null && loch.getListaPotworow().size() >= Loch.POJEMNOSC - 1 && najlepszy > najslabszy.moc() * 2) {
+                    wydaj(gra, new Rozkaz.Zwolnienie(najslabszy));
+                }
+            }
+            // Szpital dla rannego, gdy coś nadciąga i jest ✔.
+            if (ocena != wladcalochow.model.strategia.OcenaAtaku.SPOKOJ) {
+                for (Potwor p : loch.getListaPotworow()) {
+                    Rozkaz s = new Rozkaz.Szpital(p);
+                    if (p.czyRanny() && starczy(gra, s)) {
+                        wydaj(gra, s);
+                        break;
+                    }
+                }
+            }
+            // Ulepszenia na zmianę, tylko z ✔.
+            List<Ulepszenie> kolejnosc = new ArrayList<>(List.of(Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI));
+            kolejnosc.sort(Comparator.comparingInt(loch::poziom));
+            kolejnosc.add(Ulepszenie.ZAMEK_SKARBCA);
+            for (Ulepszenie u : kolejnosc) {
+                Rozkaz r = new Rozkaz.ZakupUlepszenia(u);
+                if (starczy(gra, r)) {
+                    wydaj(gra, r);
+                    break;
+                }
+            }
+            for (Potwor p : loch.getListaPotworow()) {
+                Rozkaz r = new Rozkaz.Premia(p);
+                if (p.procentMorale() < 0.5 && starczy(gra, r)) {
+                    wydaj(gra, r);
+                    break;
+                }
+            }
+        }
+    };
+
+    /** Podpowiedzi zastępują kalkulator: gracz, który tylko je czyta, gra kilka razy dłużej niż bierny. */
+    @Test
+    void podpowiedziZastepujaLiczenie() {
+        int ekspert = mediana(ekspert(true));
+        int czlowiek = mediana(Z_PODPOWIEDZIAMI);
+        int bierny = mediana(BIERNY);
+        System.out.println("BALANS podpowiedzi: ekspert " + ekspert + " · z podpowiedziami " + czlowiek
+                + " · bierny " + bierny);
+        System.out.println("BALANS " + opisEksperta("podpowiedzi", Z_PODPOWIEDZIAMI));
+        assertTrue(czlowiek > 3 * bierny, "podpowiedzi wystarczają do długiej gry: " + czlowiek);
+    }
+
     static int mediana(Gracz gracz) {
         int[] dni = new int[GIER];
         for (int i = 0; i < GIER; i++) {
