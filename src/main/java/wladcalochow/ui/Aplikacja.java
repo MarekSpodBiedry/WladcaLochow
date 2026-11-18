@@ -545,21 +545,32 @@ public final class Aplikacja {
         e.ramka(x, y, w, 12, Paleta.RAMKA, Paleta.PANEL, "Ministrowie i loch", Paleta.ZLOTO);
         int tx = x + 2;
         int tw = w - 4;
-        linia(e, tx, y + 1, tw, Sprite.FINANSE + " Finanse: " + finansow.getImie(), Paleta.TEKST, true);
-        linia(e, tx + 3, y + 2, tw - 3, finansow.nazwaRodzaju() + ", pensja " + finansow.getPensja()
-                + ", zniżki " + procent(finansow.getNegocjacje()) + "%", Paleta.TEKST_SLABY, false);
+        // Stażysta (darmowy zastępca po ministrze, który odszedł) jest czerwony: to sygnał, że trzeba kogoś zatrudnić.
+        boolean stazystaF = finansow.getPensja() == 0;
+        boolean stazystaP = pracy.getPensja() == 0;
+        linia(e, tx, y + 1, tw, Sprite.FINANSE + " Finanse: " + finansow.getImie(),
+                stazystaF ? Paleta.CZERWIEN : Paleta.TEKST, true);
+        linia(e, tx + 3, y + 2, tw - 3, stazystaF ? "zastępstwo, bez cech: wymień (M)"
+                : finansow.nazwaRodzaju() + ", pensja " + finansow.getPensja() + ", zniżki "
+                + procent(finansow.getNegocjacje()) + "%", stazystaF ? Paleta.CZERWIEN : Paleta.TEKST_SLABY, false);
         if (gra.getNastepnyMinisterFinansow() != null) {
             linia(e, tx + 3, y + 3, tw - 3, "od jutra: " + gra.getNastepnyMinisterFinansow().getImie(),
                     Paleta.POMARANCZ, false);
+        } else {
+            cechaIWada(e, tx + 3, y + 3, tw - 3, finansow.getCecha(), finansow.getWada());
         }
-        linia(e, tx, y + 4, tw, Sprite.KADRY + " Kadry: " + pracy.getImie(), Paleta.TEKST, true);
-        linia(e, tx + 3, y + 5, tw - 3, pracy.nazwaRodzaju() + ", pensja " + pracy.getPensja(),
-                Paleta.TEKST_SLABY, false);
+        linia(e, tx, y + 4, tw, Sprite.KADRY + " Kadry: " + pracy.getImie(),
+                stazystaP ? Paleta.CZERWIEN : Paleta.TEKST, true);
+        linia(e, tx + 3, y + 5, tw - 3, stazystaP ? "zastępstwo, bez cech: wymień (M)"
+                : pracy.nazwaRodzaju() + ", pensja " + pracy.getPensja(),
+                stazystaP ? Paleta.CZERWIEN : Paleta.TEKST_SLABY, false);
         linia(e, tx + 3, y + 6, tw - 3, "werbunek +" + pracy.getWerbunek() + ", kopalnia +"
                 + procent(pracy.getNadzorKopalni()) + "%", Paleta.TEKST_SLABY, false);
         if (gra.getNastepnyMinisterPracy() != null) {
             linia(e, tx + 3, y + 7, tw - 3, "od jutra: " + gra.getNastepnyMinisterPracy().getImie(),
                     Paleta.POMARANCZ, false);
+        } else {
+            cechaIWada(e, tx + 3, y + 7, tw - 3, pracy.getCecha(), pracy.getWada());
         }
         if (loch.getWydobycieDoOdebrania() > 0) {
             linia(e, tx, y + 8, tw, "Z kopalni jutro rano: +" + loch.getWydobycieDoOdebrania() + " złota",
@@ -592,6 +603,17 @@ public final class Aplikacja {
     /** Jeden wiersz panelu. Gdyby tekst się nie zmieścił, dostanie wielokropek, który wyłapują testy układu. */
     private static void linia(Ekran e, int x, int y, int maks, String tekst, int kolor, boolean pogrubiony) {
         e.pisz(x, y, Ekran.przytnij(tekst, maks), kolor, Ekran.BEZ_ZMIAN, pogrubiony);
+    }
+
+    /** Cecha (zielona) i wada (czerwona) ministra w jednej linii panelu; nic, gdy minister ich nie ma. */
+    private static void cechaIWada(Ekran e, int x, int y, int maks, CechaMinistra cecha, WadaMinistra wada) {
+        String c = cecha == null ? "" : "+" + cecha.nazwa();
+        String wd = wada == null ? "" : "−" + wada.nazwa();
+        if (Ekran.szerokosc(c) + 1 + Ekran.szerokosc(wd) > maks) {
+            return;
+        }
+        int px = e.pisz(x, y, c, Paleta.ZIELEN);
+        e.pisz(c.isEmpty() ? px : px + 1, y, wd, Paleta.CZERWIEN);
     }
 
     private static String skrotUlepszenia(Ulepszenie ulepszenie) {
@@ -670,34 +692,90 @@ public final class Aplikacja {
 
     // ---- dziennik ----
 
+    /** Jedna linia dziennika na ekranie: tekst, kolor, pogrubienie i tło całej linii (BEZ_ZMIAN: bez tła). */
+    record WierszDziennika(String tekst, int kolor, boolean gruby, int tlo) {
+    }
+
+    /**
+     * Dziennik do czytania, a nie ściana tekstu:
+     * - każdy dzień zaczyna się wyraźnym paskiem;
+     * - ciosy z zakończonych walk są zwinięte do jednej linii (pełne ciosy widać tylko w trwającej walce);
+     * - zdarzenia, które zmieniają loch na dłużej (ton ALARM: odejście ministra, przegrana, ranni),
+     *   mają czerwone tło i wykrzyknik, żeby nie dało się ich przegapić.
+     */
+    List<WierszDziennika> linieDziennika(List<Gra.WpisDziennika> wpisy, int szer) {
+        List<WierszDziennika> linie = new ArrayList<>();
+        int od = Math.max(0, wpisy.size() - 250);
+        // Ostatni blok ciosów jest rozwinięty tylko wtedy, gdy walka właśnie trwa na ekranie.
+        int ostatniBlok = -1;
+        if (tryb == Tryb.WALKA) {
+            for (int i = wpisy.size() - 1; i >= od && ostatniBlok < 0; i--) {
+                if (wpisy.get(i).walka()) {
+                    ostatniBlok = i;
+                }
+            }
+            while (ostatniBlok > od && wpisy.get(ostatniBlok - 1).walka()) {
+                ostatniBlok--;
+            }
+        }
+        int tloAlarmu = Paleta.mieszaj(Paleta.PANEL, Paleta.CZERWIEN, 0.32);
+        for (int i = od; i < wpisy.size(); i++) {
+            Gra.WpisDziennika wpis = wpisy.get(i);
+            if (wpis.walka() && (ostatniBlok < 0 || i < ostatniBlok)) {
+                // Zwinięta walka: ile ciosów i rund, bez szczegółów.
+                int ciosy = 0;
+                int rundy = 0;
+                int j = i;
+                while (j < wpisy.size() && wpisy.get(j).walka() && (ostatniBlok < 0 || j < ostatniBlok)) {
+                    if (wpisy.get(j).tekst().startsWith("Runda ")) {
+                        rundy++;
+                    } else {
+                        ciosy++;
+                    }
+                    j++;
+                }
+                linie.add(new WierszDziennika("  ⚔ walka: " + rundy + " rund, " + ciosy + " ruchów",
+                        Paleta.TEKST_SLABY, false, Ekran.BEZ_ZMIAN));
+                i = j - 1;
+                continue;
+            }
+            String tekst = wpis.tekst();
+            if (wpis.ton() == Zdarzenie.Ton.NAGLOWEK && tekst.startsWith("Dzień ")) {
+                String pasek = " " + tekst.toUpperCase() + " ";
+                linie.add(new WierszDziennika(pasek, Paleta.ZLOTO, true, Paleta.NAGLOWEK));
+                continue;
+            }
+            boolean alarm = wpis.ton() == Zdarzenie.Ton.ALARM;
+            boolean naglowek = wpis.ton() == Zdarzenie.Ton.NAGLOWEK;
+            String znak = alarm ? "! " : naglowek ? (tekst.startsWith("Atak!") ? "⚔ " : "") : "· ";
+            boolean pierwszy = true;
+            for (String wiersz : Ekran.zawin(tekst, szer - Ekran.szerokosc(znak))) {
+                String linia = (pierwszy ? znak : " ".repeat(Ekran.szerokosc(znak))) + wiersz;
+                linie.add(new WierszDziennika(linia, alarm ? Paleta.TEKST : Paleta.ton(wpis.ton()), alarm || naglowek,
+                        alarm ? tloAlarmu : Ekran.BEZ_ZMIAN));
+                pierwszy = false;
+            }
+        }
+        return linie;
+    }
+
     private void dziennik(Ekran e, int x, int y, int w, int h) {
         e.ramka(x, y, w, h, Paleta.RAMKA, Paleta.PANEL, "Dziennik", Paleta.POMARANCZ);
         String podpowiedz = " " + Ekran.przytnij(coTeraz(), w - 17) + " ";
         e.pisz(x + w - Ekran.szerokosc(podpowiedz) - 2, y, podpowiedz, Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
         int wiersze = h - 2;
-        int szerTekstu = w - 4;
-        List<Gra.WpisDziennika> wpisy = gra.getDziennik();
-        List<String> teksty = new ArrayList<>();
-        List<Integer> kolory = new ArrayList<>();
-        List<Boolean> naglowki = new ArrayList<>();
-        for (int i = Math.max(0, wpisy.size() - 80); i < wpisy.size(); i++) {
-            Gra.WpisDziennika wpis = wpisy.get(i);
-            boolean naglowek = wpis.ton() == Zdarzenie.Ton.NAGLOWEK;
-            String tekst = naglowek ? "── " + wpis.tekst() + " ──" : wpis.tekst();
-            boolean pierwszy = true;
-            for (String wiersz : Ekran.zawin(tekst, szerTekstu - 2)) {
-                teksty.add((naglowek ? "" : pierwszy ? "· " : "  ") + wiersz);
-                kolory.add(Paleta.ton(wpis.ton()));
-                naglowki.add(naglowek);
-                pierwszy = false;
-            }
-        }
-        int maksPrzewiniecie = Math.max(0, teksty.size() - wiersze);
+        List<WierszDziennika> linie = linieDziennika(gra.getDziennik(), w - 4);
+        int maksPrzewiniecie = Math.max(0, linie.size() - wiersze);
         przewiniecie = Math.max(0, Math.min(przewiniecie, maksPrzewiniecie));
-        int koniecListy = teksty.size() - przewiniecie;
+        int koniecListy = linie.size() - przewiniecie;
         int start = Math.max(0, koniecListy - wiersze);
         for (int i = start; i < koniecListy; i++) {
-            e.pisz(x + 2, y + 1 + i - start, teksty.get(i), kolory.get(i), Ekran.BEZ_ZMIAN, naglowki.get(i));
+            WierszDziennika l = linie.get(i);
+            int wy = y + 1 + i - start;
+            if (l.tlo() != Ekran.BEZ_ZMIAN) {
+                e.wypelnij(x + 1, wy, w - 2, 1, l.tlo());
+            }
+            e.pisz(x + 2, wy, l.tekst(), l.kolor(), Ekran.BEZ_ZMIAN, l.gruby());
         }
         if (przewiniecie > 0) {
             String info = " ↓ nowsze wpisy poniżej ";
@@ -1533,6 +1611,8 @@ public final class Aplikacja {
     /** Zmiany w załodze: każda grupa we własnej ramce w swoim kolorze, obok siebie. */
     private static List<Dialog.Ramka> ramkiZalogi(BilansDnia bilans) {
         List<Dialog.Ramka> ramki = new ArrayList<>();
+        // Odejście ministra pierwsze: zmienia loch na wiele dni, a łatwo je przegapić.
+        ramka(ramki, "Odszedł minister", bilans.getOdeszliMinistrowie(), Paleta.CZERWIEN);
         ramka(ramki, "Polegli", bilans.getPolegli(), Paleta.CZERWIEN);
         ramka(ramki, "Odeszli", bilans.getOdeszli(), Paleta.CZERWIEN);
         ramka(ramki, "Bez żołdu", bilans.getNieoplaceni(), Paleta.CZERWIEN);
