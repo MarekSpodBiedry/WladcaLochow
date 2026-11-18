@@ -136,9 +136,15 @@ public final class Uruchamiacz {
         return tekst.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    /** Opcje Javy dla okna gry: mały limit pamięci i prosty odśmiecacz, który oddaje pamięć systemowi. */
+    public static final List<String> OPCJE_JVM = List.of("-Xmx160m", "-XX:+UseSerialGC");
+
     /** Polecenie, które uruchamia tę samą grę jeszcze raz: ta sama Java, ten sam plik .jar. */
     public static List<String> polecenieGry(Path java, Path jar, List<String> argumenty) {
-        List<String> polecenie = new ArrayList<>(List.of(java.toString(), "-jar", jar.toString(), OPCJA_W_OKNIE));
+        // Limit pamięci: bez niego Java bierze na zapas dużą część RAM-u (u Marka 700 MB). Grze wystarcza ułamek.
+        List<String> polecenie = new ArrayList<>(List.of(java.toString()));
+        polecenie.addAll(OPCJE_JVM);
+        polecenie.addAll(List.of("-jar", jar.toString(), OPCJA_W_OKNIE));
         polecenie.addAll(argumenty);
         return polecenie;
     }

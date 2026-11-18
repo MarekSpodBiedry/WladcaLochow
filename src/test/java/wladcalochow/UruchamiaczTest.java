@@ -20,7 +20,8 @@ class UruchamiaczTest {
         Path java = Path.of("/opt/java/bin/java");
         Path jar = Path.of("/gry/wladca-lochow.jar");
         List<String> polecenie = Uruchamiacz.polecenieGry(java, jar, List.of("--ziarno", "7"));
-        assertEquals(List.of(java.toString(), "-jar", jar.toString(), "--w-oknie", "--ziarno", "7"), polecenie);
+        assertEquals(List.of(java.toString(), "-Xmx160m", "-XX:+UseSerialGC", "-jar", jar.toString(), "--w-oknie",
+                "--ziarno", "7"), polecenie);
     }
 
     @Test
