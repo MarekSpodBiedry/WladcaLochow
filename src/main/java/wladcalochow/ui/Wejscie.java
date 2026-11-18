@@ -15,6 +15,14 @@ sealed interface Wejscie {
     record Klik(int x, int y) implements Wejscie {
     }
 
+    /** Kursor myszy przesunął się nad komórkę (do podświetlania tego, co pod nim). */
+    record Ruch(int x, int y) implements Wejscie {
+    }
+
+    /** Kółko myszy: kierunek -1 to w górę, +1 w dół. */
+    record Kolko(int kierunek, int x, int y) implements Wejscie {
+    }
+
     /** Nic nie nadeszło w zadanym czasie. */
     record Brak() implements Wejscie {
     }

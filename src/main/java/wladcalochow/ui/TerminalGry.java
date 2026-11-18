@@ -8,13 +8,19 @@ import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.NonBlockingReader;
 
 /**
- * Cienka warstwa nad JLine: tryb surowy, ekran alternatywny, odczyt klawiszy i kliknięć.
- * Myszka zgłasza tylko naciśnięcia przycisków (tryb 1000), więc sam ruch kursora niczego nie wysyła.
+ * Cienka warstwa nad JLine: tryb surowy, ekran alternatywny, odczyt klawiszy i myszy.
+ *
+ * <p>Mysz działa tak jak w Claude Code: tryby 1000 (kliknięcia), 1002 (przeciąganie), 1003 (każdy ruch,
+ * do podświetlania) i 1006 (współrzędne SGR). Włącza je {@code terminal.trackMouse}: na Linuksie i macOS
+ * wysyła sekwencje do terminala, a na Windows przestawia konsolę tak, żeby JLine dostawał zdarzenia myszy
+ * i zamieniał je na te same sekwencje. Bez tego na Windows żadne kliknięcie nie docierało do gry.
  */
 final class TerminalGry implements Konsola {
 
-    private static final String WLACZ = "\u001b[?1049h\u001b[?25l\u001b[?1000h\u001b[?1006h\u001b[2J";
-    private static final String WYLACZ = "\u001b[?1006l\u001b[?1000l\u001b[0m\u001b[?25h\u001b[?1049l";
+    private static final String WLACZ = "\u001b[?1049h\u001b[?25l\u001b[2J";
+    private static final String SGR_WLACZ = "\u001b[?1006h";
+    private static final String WYLACZ = "\u001b[?1006l\u001b[?1003l\u001b[?1002l\u001b[?1000l\u001b[0m\u001b[?25h"
+            + "\u001b[?1049l";
 
     private final Terminal terminal;
     private final Attributes zapisaneAtrybuty;
@@ -37,6 +43,8 @@ final class TerminalGry implements Konsola {
         sprzatanie = new Thread(this::przywroc);
         Runtime.getRuntime().addShutdownHook(sprzatanie);
         wypisz(WLACZ);
+        terminal.trackMouse(Terminal.MouseTracking.Any);
+        wypisz(SGR_WLACZ);
     }
 
     private static boolean wykryjPelnyKolor() {
@@ -161,13 +169,26 @@ final class TerminalGry implements Konsola {
         };
     }
 
-    /** Liczy się tylko naciśnięcie lewego przycisku; ruch, kółko i puszczenie są pomijane. */
-    private static Wejscie klik(int przycisk, int x, int y, boolean nacisniecie) {
+    /**
+     * Zamienia zgłoszenie myszy na zdarzenie gry: ruch (podświetlanie), kółko (przewijanie) albo kliknięcie
+     * lewym przyciskiem. Puszczenie przycisku i inne przyciski są pomijane. Współrzędne od 1, gra liczy od 0.
+     */
+    static Wejscie klik(int przycisk, int x, int y, boolean nacisniecie) {
+        if (x < 1 || y < 1) {
+            return new Wejscie.Brak();
+        }
         boolean ruch = (przycisk & 32) != 0;
         boolean kolko = (przycisk & 64) != 0;
+        if (kolko) {
+            return nacisniecie ? new Wejscie.Kolko((przycisk & 1) == 0 ? -1 : 1, x - 1, y - 1) : new Wejscie.Brak();
+        }
+        if (ruch) {
+            return new Wejscie.Ruch(x - 1, y - 1);
+        }
+        // W starym formacie (bez SGR) puszczenie przycisku to kod 3.
         boolean lewy = (przycisk & 3) == 0;
-        if (!nacisniecie || ruch || kolko || !lewy || x < 1 || y < 1) {
-            return new Wejscie.Brak();
+        if (!nacisniecie || !lewy) {
+            return new Wejscie.Ruch(x - 1, y - 1);
         }
         return new Wejscie.Klik(x - 1, y - 1);
     }
@@ -178,6 +199,7 @@ final class TerminalGry implements Konsola {
         }
         zamkniety = true;
         try {
+            terminal.trackMouse(Terminal.MouseTracking.Off);
             wypisz(WYLACZ);
             terminal.setAttributes(zapisaneAtrybuty);
         } catch (RuntimeException e) {
