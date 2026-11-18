@@ -1991,6 +1991,17 @@ public final class Aplikacja {
                 List.of(Dialog.Linia.tekst(potwor.czyRanny()
                         ? "Ranny potwór natychmiast opuszcza loch. Reszta załogi traci przez to trochę morale."
                         : "Potwór natychmiast opuszcza loch i nie pobiera już żołdu.", Paleta.TEKST)), rZwolnij));
+        if (potwor.czyRanny()) {
+            Rozkaz rSzpital = new Rozkaz.Szpital(potwor);
+            opcje.add(wierszRozkazu(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g("Szpital", Paleta.TEKST)),
+                            Wiersze.komorka(Wiersze.slaby("walczy już dziś, zamiast za "),
+                                    Wiersze.k(potwor.getDniRekonwalescencji() + " dni", Paleta.ZIELEN)),
+                            kosztKomorka(gra.koszt(rSzpital))),
+                    List.of(Dialog.Linia.tekst("Ranny wraca do sił od razu i już dziś broni lochu. Kosztuje podwójny "
+                            + "żołd za każdy dzień, który i tak by przeleżał (co najmniej " + Rozkaz.Szpital.MIN_KOSZT
+                            + " złota). Dzisiejszy atak jest już w drodze, więc szpital go nie osłabi.", Paleta.TEKST)),
+                    rSzpital));
+        }
         opcje.add(Dialog.Opcja.wiersz(0, Wiersze.wiersz(Wiersze.komorka(Wiersze.g("Wróć", Paleta.TEKST)),
                         Wiersze.komorka("bez rozkazu", Paleta.TEKST_SLABY), Wiersze.komorka("", Paleta.TEKST)),
                 List.of(Dialog.Linia.tekst("Wróć do listy potworów.", Paleta.TEKST)), true, this::dialogPotwory));

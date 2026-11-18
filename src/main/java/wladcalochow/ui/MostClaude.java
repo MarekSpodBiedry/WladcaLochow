@@ -236,6 +236,11 @@ final class MostClaude {
         for (int i = 1; i <= potwory; i++) {
             polecenia.add("ZWOLNIJ P" + i);
         }
+        for (int i = 1; i <= potwory; i++) {
+            if (gra.getLoch().getListaPotworow().get(i - 1).czyRanny()) {
+                polecenia.add("SZPITAL P" + i);
+            }
+        }
         for (int i = 1; i <= gra.getDzien().getKandydaciFinansow().size(); i++) {
             polecenia.add("MINISTER MF" + i);
         }
@@ -258,6 +263,7 @@ final class MostClaude {
             case "ULEPSZENIE" -> new Rozkaz.ZakupUlepszenia(Ulepszenie.valueOf(argument));
             case "PREMIA" -> new Rozkaz.Premia(element(gra.getLoch().getListaPotworow(), argument, "P"));
             case "ZWOLNIJ" -> new Rozkaz.Zwolnienie(element(gra.getLoch().getListaPotworow(), argument, "P"));
+            case "SZPITAL" -> new Rozkaz.Szpital(element(gra.getLoch().getListaPotworow(), argument, "P"));
             case "MINISTER" -> argument.startsWith("MF")
                     ? new Rozkaz.ZmianaMinistraFinansow(element(gra.getDzien().getKandydaciFinansow(), argument, "MF"))
                     : new Rozkaz.ZmianaMinistraPracy(element(gra.getDzien().getKandydaciPracy(), argument, "MP"));
