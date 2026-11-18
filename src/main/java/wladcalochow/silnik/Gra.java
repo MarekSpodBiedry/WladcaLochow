@@ -18,6 +18,7 @@ import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
 import wladcalochow.model.Zdarzenie.Informacja;
 import wladcalochow.model.Zdarzenie.Ton;
+import wladcalochow.model.strategia.OcenaAtaku;
 import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
@@ -107,7 +108,9 @@ public class Gra implements Serializable {
             dzien.ustawLimitRozkazow(Samouczek.rozkazyNaDzien(numerDnia));
         }
         loguj(dzien.przyjmijPrzychod(loch));
-        loguj(new Informacja(dzien.getRaport().opis(),
+        OcenaAtaku ocena = ocenaAtaku();
+        loguj(new Informacja(dzien.getRaport().opis()
+                + (ocena == OcenaAtaku.SPOKOJ ? "" : " Ocena: " + ocena.nazwa() + "."),
                 dzien.getRaport().minBohaterow() > 0 ? Ton.ZLY : Ton.NEUTRALNY));
         if (dzien.getKandydaci().isEmpty()) {
             loguj(new Informacja("Kandydaci do pracy: brak.", Ton.NEUTRALNY));
@@ -300,6 +303,50 @@ public class Gra implements Serializable {
         if (dziennik.size() > MAX_DZIENNIK) {
             dziennik.subList(0, dziennik.size() - MAX_DZIENNIK).clear();
         }
+    }
+
+    // ---- podpowiedzi zamiast liczenia ----
+
+    /**
+     * Zapowiadany atak oceniony słowami: porównanie ceny łapówki ze zwiadu (wartość bohaterów) z obroną lochu
+     * (wartość potworów × 2/3, tak jak liczą ją bohaterowie). Gracz nie musi tego liczyć sam.
+     */
+    public OcenaAtaku ocenaAtaku() {
+        if (dzien == null) {
+            return OcenaAtaku.SPOKOJ;
+        }
+        int obrona = DzienGry.wartoscOddzialu(loch.getListaPotworow()) * 2 / 3;
+        return OcenaAtaku.ocen(dzien.getRaport().szacowanaSila(), obrona, dzien.getRaport().spokoj());
+    }
+
+    /** Dzisiejsze stałe koszty: pensje obu ministrów i żołd całej załogi. */
+    public int kosztyDnia() {
+        return pensjeDzis() + loch.dziennyKosztZoldu();
+    }
+
+    private int pensjeDzis() {
+        int przychod = dzien == null ? 0 : dzien.getBilans().przychody();
+        return loch.getMinisterFinansow().pensjaDnia(przychod) + loch.getMinisterPracy().pensjaDnia(przychod);
+    }
+
+    /** Łapówka, którą trzeba będzie dziś zapłacić, jeśli obowiązuje przekupstwo, a zwiad widzi bohaterów. */
+    public int zaplanowanaLapowka() {
+        return dzien == null || loch.getPostawa() != wladcalochow.model.strategia.Postawa.PRZEKUPSTWO
+                ? 0 : dzien.getRaport().szacowanaSila();
+    }
+
+    /**
+     * O ile złota zabraknie na pensje ministrów, jeśli teraz wydamy podaną kwotę. Brak tutaj to poważna sprawa:
+     * minister bez pensji odchodzi. (Rezerwa na łapówkę i żołd w symulacji szkodziła: wydane złoto mniej
+     * przyciąga bohaterów, więc ostrzegamy o nich tylko na żółto.)
+     */
+    public int brakNaKonieczne(int wydatek) {
+        return Math.max(0, pensjeDzis() - (loch.getSkarbiec().getZloto() - wydatek));
+    }
+
+    /** O ile złota zabraknie na wszystko dzisiaj (konieczne i żołd), jeśli teraz wydamy podaną kwotę (0: starczy). */
+    public int brakPoWydaniu(int wydatek) {
+        return Math.max(0, kosztyDnia() + zaplanowanaLapowka() - (loch.getSkarbiec().getZloto() - wydatek));
     }
 
     public Loch getLoch() {
