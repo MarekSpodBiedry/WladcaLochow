@@ -105,6 +105,11 @@ public abstract class Potwor extends Istota {
         return dniRekonwalescencji > 0;
     }
 
+    /** Szpital: ciężko ranny od razu wraca do sił. */
+    public void wyleczZRan() {
+        dniRekonwalescencji = 0;
+    }
+
     public int getDniRekonwalescencji() {
         return dniRekonwalescencji;
     }

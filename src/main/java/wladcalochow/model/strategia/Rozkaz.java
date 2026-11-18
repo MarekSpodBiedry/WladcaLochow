@@ -87,6 +87,22 @@ public sealed interface Rozkaz {
         }
     }
 
+    /** Szpital: ranny potwór wraca do walki od razu, zamiast czekać kilka poranków. */
+    record Szpital(Potwor potwor) implements Rozkaz {
+        /** Najniższa cena szpitala. */
+        public static final int MIN_KOSZT = 15;
+
+        @Override
+        public RodzajRozkazu rodzaj() {
+            return RodzajRozkazu.POTWORY;
+        }
+
+        @Override
+        public String nazwa() {
+            return "Szpital: " + potwor.getImie();
+        }
+    }
+
     record ZakupUlepszenia(Ulepszenie ulepszenie) implements Rozkaz {
         @Override
         public RodzajRozkazu rodzaj() {

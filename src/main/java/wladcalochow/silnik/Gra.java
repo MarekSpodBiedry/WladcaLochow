@@ -129,6 +129,9 @@ public class Gra implements Serializable {
             case Rozkaz.ZmianaMinistraPracy r ->
                     finansow.cenaPoNegocjacjach(Math.max(30, 3 * r.nowy().getPensja()));
             case Rozkaz.Premia r -> Math.max(10, r.potwor().getZold());
+            // Podwójny żołd za każdy dzień, który ranny i tak by przeleżał (przy pojedynczym szpital był za mocny).
+            case Rozkaz.Szpital r -> Math.max(Rozkaz.Szpital.MIN_KOSZT,
+                    2 * r.potwor().getZold() * r.potwor().getDniRekonwalescencji());
             case Rozkaz.ZakupUlepszenia r -> loch.poziom(r.ulepszenie()) >= Ulepszenie.MAX_POZIOM ? 0
                     : finansow.cenaPoNegocjacjach(r.ulepszenie().koszt(loch.poziom(r.ulepszenie()) + 1));
             case Rozkaz.LimitRekrutacji r -> 0;
@@ -158,6 +161,8 @@ public class Gra implements Serializable {
                     : r.potwor().getMorale() >= r.potwor().getMaxMorale() ? "Morale jest już pełne" : null;
             case Rozkaz.Zwolnienie r ->
                     !loch.getListaPotworow().contains(r.potwor()) ? "Nie ma takiego potwora" : null;
+            case Rozkaz.Szpital r -> !loch.getListaPotworow().contains(r.potwor()) ? "Nie ma takiego potwora"
+                    : !r.potwor().czyRanny() ? "Ten potwór nie jest ranny" : null;
             case Rozkaz.ZakupUlepszenia r ->
                     loch.poziom(r.ulepszenie()) >= Ulepszenie.MAX_POZIOM ? "Najwyższy poziom" : null;
         };
@@ -206,6 +211,10 @@ public class Gra implements Serializable {
                     yield r.potwor().getImie() + " zostaje wyrzucony ranny. Załoga traci zaufanie (morale spada)";
                 }
                 yield r.potwor().getImie() + " opuszcza loch (zwolnienie)";
+            }
+            case Rozkaz.Szpital r -> {
+                r.potwor().wyleczZRan();
+                yield r.potwor().getImie() + " wraca ze szpitala i już dziś stanie do walki";
             }
             case Rozkaz.ZakupUlepszenia r -> {
                 loch.ulepsz(r.ulepszenie());
