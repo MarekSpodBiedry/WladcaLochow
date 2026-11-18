@@ -222,6 +222,15 @@ class BalansSymulacjaTest {
                 if (najslabszy != null && potwory.size() >= Loch.POJEMNOSC - 1 && najlepszyKandydat > najslabszy.moc() * 2) {
                     wydaj(gra, new Rozkaz.Zwolnienie(najslabszy));
                 }
+                // Szpital dla najsilniejszego rannego, gdy atak jest zapowiedziany, a złota starcza ponad zapas.
+                if (raport.maxBohaterow() > 0) {
+                    potwory.stream().filter(Potwor::czyRanny).max(Comparator.comparingInt(Potwor::moc)).ifPresent(r -> {
+                        Rozkaz szpital = new Rozkaz.Szpital(r);
+                        if (gra.powodOdmowy(szpital) == null && gra.koszt(szpital) <= loch.getSkarbiec().getZloto() - rezerwa) {
+                            wydaj(gra, szpital);
+                        }
+                    });
+                }
                 for (Potwor p : potwory) {
                     Rozkaz premia = new Rozkaz.Premia(p);
                     if (p.procentMorale() < 0.5 && gra.powodOdmowy(premia) == null && gra.koszt(premia) <= zloto - rezerwa) {

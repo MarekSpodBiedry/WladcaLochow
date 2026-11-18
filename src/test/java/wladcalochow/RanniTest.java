@@ -76,6 +76,34 @@ class RanniTest {
     }
 
     @Test
+    void szpitalStawiaRannegoNaNogiOdRazuZaZoldZaPozostaleDni() {
+        Gra gra = gra();
+        Ork ranny = new Ork("Ranny", 14, 60, 70, 20);
+        ranny.zranCiezko(3);
+        gra.getLoch().zatrudnij(ranny);
+        gra.getLoch().getSkarbiec().wplac(500);
+        Rozkaz szpital = new Rozkaz.Szpital(ranny);
+        assertEquals(120, gra.koszt(szpital), "podwójny żołd 20 za każdy z 3 pozostałych dni");
+        int zloto = gra.getLoch().getSkarbiec().getZloto();
+
+        gra.wykonajRozkaz(szpital);
+        assertFalse(ranny.czyRanny());
+        assertEquals(zloto - 120, gra.getLoch().getSkarbiec().getZloto());
+        gra.rozegrajPoranek();
+        assertTrue(gra.getLoch().wojownicy().contains(ranny) || ranny.czyWKopalni(), "już dziś walczy albo kopie");
+    }
+
+    @Test
+    void szpitalTylkoDlaRannegoICoNajmniej15Zlota() {
+        Gra gra = gra();
+        Ork zdrowy = new Ork("Zdrowy", 14, 60, 70, 3);
+        gra.getLoch().zatrudnij(zdrowy);
+        assertEquals("Ten potwór nie jest ranny", gra.powodOdmowy(new Rozkaz.Szpital(zdrowy)));
+        zdrowy.zranCiezko(2);
+        assertEquals(Rozkaz.Szpital.MIN_KOSZT, gra.koszt(new Rozkaz.Szpital(zdrowy)), "tani potwór: cena minimalna");
+    }
+
+    @Test
     void zwolnienieZdrowegoNieRuszaMorale() {
         Gra gra = gra();
         Ork zdrowy = new Ork("Zdrowy", 14, 60, 70, 20);
