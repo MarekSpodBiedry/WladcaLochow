@@ -23,6 +23,7 @@ import wladcalochow.model.Potwor;
 import wladcalochow.model.Walka;
 import wladcalochow.model.Zdarzenie;
 import wladcalochow.model.strategia.CechaMinistra;
+import wladcalochow.model.strategia.OcenaAtaku;
 import wladcalochow.model.strategia.Postawa;
 import wladcalochow.model.strategia.RaportZwiadu;
 import wladcalochow.model.strategia.RodzajRozkazu;
@@ -576,8 +577,15 @@ public final class Aplikacja {
             linia(e, tx, y + 8, tw, "Z kopalni jutro rano: +" + loch.getWydobycieDoOdebrania() + " złota",
                     Paleta.TURKUS, false);
         }
-        linia(e, tx, y + 9, tw, "Limit rekrutacji: " + loch.getLimitRekrutacji() + "% skarbca", Paleta.TEKST,
-                false);
+        // Dzienne koszty jedną liczbą (pensje i żołd): czerwone, gdy skarbiec ich nie pokrywa.
+        int koszty = gra.kosztyDnia();
+        int px = e.pisz(tx, y + 9, "Koszty dnia ", Paleta.TEKST_SLABY);
+        px = e.pisz(px, y + 9, String.valueOf(koszty),
+                koszty > loch.getSkarbiec().getZloto() ? Paleta.CZERWIEN : Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
+        String limit = " · rekrutacja do " + loch.getLimitRekrutacji() + "%";
+        if (px - tx + Ekran.szerokosc(limit) <= tw) {
+            e.pisz(px, y + 9, limit, Paleta.TEKST_SLABY);
+        }
         // Poziomy ulepszeń liczbami (pięć kratek na każde ulepszenie nie mieści się w najwęższym oknie).
         int ux = tx;
         for (Ulepszenie ulepszenie : Ulepszenie.values()) {
@@ -1660,6 +1668,20 @@ public final class Aplikacja {
         List<Dialog.Linia> pelny = new ArrayList<>(opis);
         if (powod != null) {
             pelny.add(Dialog.Linia.tekst("Niedostępne: " + powod.toLowerCase() + ".", Paleta.CZERWIEN));
+        } else if (gra.koszt(rozkaz) > 0) {
+            // Skutek zamiast rachunku: co się stanie z dzisiejszymi wydatkami po tym zakupie.
+            int koszt = gra.koszt(rozkaz);
+            int konieczne = gra.brakNaKonieczne(koszt);
+            int wszystko = gra.brakPoWydaniu(koszt);
+            String lapowka = gra.zaplanowanaLapowka() > 0 ? ", łapówkę" : "";
+            pelny.add(konieczne > 0
+                    ? Dialog.Linia.tekst("✖ Zabraknie " + konieczne + " złota na pensje ministrów: minister bez "
+                            + "pensji odchodzi, a urząd przejmuje stażysta.", Paleta.CZERWIEN)
+                    : wszystko > 0
+                    ? Dialog.Linia.tekst("! Zabraknie " + wszystko + " złota na żołd" + lapowka + ": części potworów "
+                            + "spadnie morale" + (lapowka.isEmpty() ? "" : " albo łapówka nie zostanie zapłacona")
+                            + ". Za to mniej złota w skarbcu ściąga słabsze ataki.", Paleta.ZLOTO)
+                    : Dialog.Linia.tekst("✔ Starczy na pensje" + lapowka + " i cały żołd.", Paleta.ZIELEN));
         }
         return Dialog.Opcja.wiersz(tabela, komorki, pelny, powod == null, () -> {
             gra.wykonajRozkaz(rozkaz);
@@ -1668,10 +1690,19 @@ public final class Aplikacja {
         });
     }
 
-    /** Koszt rozkazu do kolumny „Koszt”: złoty, albo kreska, gdy darmowy. */
-    private static List<Dialog.Kawalek> kosztKomorka(int koszt) {
-        return koszt > 0 ? Wiersze.komorka(Wiersze.g(String.valueOf(koszt), Paleta.ZLOTO))
-                : Wiersze.komorka("–", Paleta.TEKST_SLABY);
+    /**
+     * Koszt rozkazu do kolumny „Koszt”: złoty z ✔, gdy po wydatku starczy na dzisiejsze koszty,
+     * czerwony z ✖, gdy zabraknie; kreska, gdy darmowy.
+     */
+    private List<Dialog.Kawalek> kosztKomorka(int koszt) {
+        if (koszt <= 0) {
+            return Wiersze.komorka("–", Paleta.TEKST_SLABY);
+        }
+        boolean konieczne = gra.brakNaKonieczne(koszt) > 0;
+        boolean zold = gra.brakPoWydaniu(koszt) > 0;
+        int kolor = konieczne ? Paleta.CZERWIEN : zold ? Paleta.ZLOTO : Paleta.ZIELEN;
+        return Wiersze.komorka(Wiersze.g(String.valueOf(koszt), konieczne ? Paleta.CZERWIEN : Paleta.ZLOTO),
+                Wiersze.k(konieczne ? " ✖" : zold ? " !" : " ✔", kolor));
     }
 
     // ---- ministrowie ----
@@ -1847,6 +1878,18 @@ public final class Aplikacja {
         };
     }
 
+    /** Ocena ataku słowami i kolorem, żeby nie trzeba było liczyć siły lochu. */
+    private Dialog.Linia liniaOceny() {
+        OcenaAtaku ocena = gra.ocenaAtaku();
+        int kolor = switch (ocena) {
+            case SPOKOJ, SLABSZY -> Paleta.ZIELEN;
+            case WYROWNANY -> Paleta.ZLOTO;
+            case GROZNY -> Paleta.CZERWIEN;
+        };
+        return Dialog.Linia.z(Wiersze.slaby("Atak   "), Wiersze.g(ocena.nazwa(), kolor),
+                Wiersze.slaby("  ·  " + ocena.opis() + " (ocena może się mylić)"));
+    }
+
     /** Raport zwiadu w jednej linii: liczba bohaterów, pewny rodzaj i cena łapówki. */
     private Dialog.Linia liniaZwiadu() {
         RaportZwiadu raport = gra.getDzien().getRaport();
@@ -1884,7 +1927,7 @@ public final class Aplikacja {
             opcje.add(wierszRozkazu(0, Wiersze.wiersz(nazwa, Wiersze.komorka(postawaKrotko(postawa), Paleta.TEKST), koszt),
                     List.of(Dialog.Linia.tekst(postawa.opis(), Paleta.TEKST)), new Rozkaz.ZmianaPostawy(postawa)));
         }
-        dialog = Dialog.zLiniami("Postawa wobec ataku", List.of(pasekRozkazow(), liniaZwiadu()), opcje,
+        dialog = Dialog.zLiniami("Postawa wobec ataku", List.of(pasekRozkazow(), liniaZwiadu(), liniaOceny()), opcje,
                 this::zamknijDialog);
     }
 
