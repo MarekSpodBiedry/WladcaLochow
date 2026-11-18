@@ -99,6 +99,8 @@ public final class Aplikacja {
     private int myszX = -1;
     private int myszY = -1;
     private static final int PRZEWIJANIE_KOLKIEM = 3;
+    /** Czy ekran trzeba przerysować (coś się zmieniło od ostatniej klatki). */
+    private boolean doNarysowania = true;
     private String komunikat;
     private boolean radaWalkiPokazana;
     private volatile String nowaWersja;
@@ -155,12 +157,22 @@ public final class Aplikacja {
     public void uruchom() throws IOException {
         try {
             // Czas gry (krok walki, sama gra) płynie co okres, także gdy ruch myszy ciągle przysyła zdarzenia.
+            // Ekran rysuje się tylko po zmianie: ruch myszy, który niczego nie podświetla, nie kosztuje nic.
             long ostatniTik = System.currentTimeMillis();
+            doNarysowania = true;
             while (!koniec) {
-                rysuj();
+                if (doNarysowania) {
+                    doNarysowania = false;
+                    rysuj();
+                }
                 long okres = walkaTrwaSama() ? 450 : 300;
                 long minelo = System.currentTimeMillis() - ostatniTik;
                 Wejscie wejscie = terminal.czytaj(Math.max(1, okres - minelo));
+                // Ruchy myszy przychodzą seriami: zbieramy całą serię i rysujemy raz, na końcu.
+                while (wejscie instanceof Wejscie.Ruch) {
+                    obsluz(wejscie);
+                    wejscie = terminal.czytaj(1);
+                }
                 switch (wejscie) {
                     case Wejscie.Brak brak -> {
                     }
@@ -168,12 +180,16 @@ public final class Aplikacja {
                         zapiszPrzyWyjsciu();
                         koniec = true;
                     }
-                    default -> obsluz(wejscie);
+                    default -> {
+                        obsluz(wejscie);
+                        doNarysowania = true;
+                    }
                 }
                 long teraz = System.currentTimeMillis();
                 if (!koniec && teraz - ostatniTik >= okres) {
                     ostatniTik = teraz;
                     tik(teraz);
+                    doNarysowania = true;
                 }
             }
         } finally {
@@ -226,6 +242,16 @@ public final class Aplikacja {
         return new ArrayList<>(skroty.keySet());
     }
 
+    /** Numer strefy klikalnej pod podanym punktem w ostatniej klatce albo -1. */
+    private int strefaPod(int x, int y) {
+        for (int i = strefy.size() - 1; i >= 0; i--) {
+            if (strefy.get(i).zawiera(x, y)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     /** Prostokąty stref klikalnych bieżącej klatki: x, y, szerokość, wysokość. */
     List<int[]> prostokatyStref() {
         return strefy.stream().map(s -> new int[] {s.x(), s.y(), s.w(), s.h()}).toList();
@@ -234,11 +260,15 @@ public final class Aplikacja {
     void obsluz(Wejscie wejscie) {
         if (wejscie instanceof Wejscie.Ruch ruch) {
             // Najechanie: przycisk pod kursorem się podświetla, a w oknie zaznacza się opcja pod kursorem.
+            // Przerysowanie tylko wtedy, gdy kursor wszedł na inny przycisk albo inną opcję.
+            int przed = strefaPod(myszX, myszY);
             myszX = ruch.x();
             myszY = ruch.y();
+            boolean zmiana = strefaPod(myszX, myszY) != przed;
             if (dialog != null) {
-                dialog.najedz(ruch.x(), ruch.y());
+                zmiana |= dialog.najedz(ruch.x(), ruch.y());
             }
+            doNarysowania |= zmiana;
             return;
         }
         if (wejscie instanceof Wejscie.Kolko kolko) {

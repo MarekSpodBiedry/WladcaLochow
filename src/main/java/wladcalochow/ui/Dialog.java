@@ -250,14 +250,16 @@ final class Dialog {
     /** Miejsca wybieralnych opcji z ostatniej klatki: x, y, szerokość, wysokość, numer opcji. */
     private final List<int[]> miejscaOpcji = new ArrayList<>();
 
-    /** Myszka nad opcją: zaznacza ją (podświetlenie i opis na dole), tak jak strzałki. */
-    void najedz(int x, int y) {
+    /** Myszka nad opcją: zaznacza ją (podświetlenie i opis na dole), tak jak strzałki. Zwraca, czy coś zmieniła. */
+    boolean najedz(int x, int y) {
         for (int[] m : miejscaOpcji) {
             if (x >= m[0] && x < m[0] + m[2] && y >= m[1] && y < m[1] + m[3]) {
+                boolean zmiana = wybrana != m[4];
                 wybrana = m[4];
-                return;
+                return zmiana;
             }
         }
+        return false;
     }
 
     /** Kółko myszy: przesuwa zaznaczenie o jedną opcję w górę (-1) albo w dół (+1). */
