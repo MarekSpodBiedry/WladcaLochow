@@ -412,6 +412,81 @@ class BalansSymulacjaTest {
                 + ", tylko początek " + poczatek20);
     }
 
+    /** Ekspert, który część dni pomija (nic nie robi), a część gra losowo (złe decyzje). */
+    static Gracz zBledami(Gracz baza, double pomin, double losowo) {
+        return new Gracz() {
+            @Override
+            public void start(Gra gra) {
+                baza.start(gra);
+            }
+
+            @Override
+            public void poranek(Gra gra, Random bot) {
+                double r = bot.nextDouble();
+                if (r < pomin) {
+                    return;
+                }
+                if (r < pomin + losowo) {
+                    LOSOWY.poranek(gra, bot);
+                    return;
+                }
+                baza.poranek(gra, bot);
+            }
+        };
+    }
+
+    /** Ekspert z innymi stylami ministrów na starcie (najlepsza para cecha-wada w danym stylu). */
+    static Gracz ekspertZMinistrami(Class<?> finanse, Class<?> praca) {
+        Gracz ekspert = ekspert(true);
+        return new Gracz() {
+            @Override
+            public void start(Gra gra) {
+                MinisterFinansow f = gra.getStartowiFinansow().stream().filter(finanse::isInstance)
+                        .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
+                        .orElse(gra.getStartowiFinansow().get(0));
+                MinisterPracy m = gra.getStartowiPracy().stream().filter(praca::isInstance)
+                        .max(Comparator.comparingInt(x -> ocena(x.getCecha(), x.getWada())))
+                        .orElse(gra.getStartowiPracy().get(0));
+                gra.rozpocznij(f, m);
+            }
+
+            @Override
+            public void poranek(Gra gra, Random bot) {
+                ekspert.poranek(gra, bot);
+            }
+        };
+    }
+
+    /**
+     * Gra ma wybaczać: nie trzeba grać jak robot. Kto pomija co czwarty dzień albo co czwarty dzień
+     * decyduje losowo, nadal gra kilka razy dłużej niż ktoś, kto nic nie robi.
+     */
+    @Test
+    void graWybaczaPominieteDniIZleDecyzje() {
+        int bierny = mediana(BIERNY);
+        int pomija = mediana(zBledami(ekspert(true), 0.25, 0));
+        int losowo = mediana(zBledami(ekspert(true), 0, 0.25));
+        System.out.println("BALANS błędy: bierny " + bierny + " · pomija 25% dni " + pomija + " · losowo 25% dni " + losowo);
+        assertTrue(pomija > 3 * bierny, "pominięte dni nie przekreślają gry: " + pomija + " vs bierny " + bierny);
+        assertTrue(losowo > 3 * bierny, "złe decyzje nie przekreślają gry: " + losowo + " vs bierny " + bierny);
+    }
+
+    /** Wiele dróg do sukcesu: każda para stylów ministrów pozwala grać długo (nie ma jednej słusznej). */
+    @Test
+    void kazdaParaMinistrowPozwalaGracDlugo() {
+        int ekspert = mediana(ekspert(true));
+        Class<?>[] finanse = {RozrzutnyMinisterFinansow.class, wladcalochow.model.ZachowawczyMinisterFinansow.class};
+        Class<?>[] praca = {RamboMinisterPracy.class, wladcalochow.model.BylejakiMinisterPracy.class};
+        for (Class<?> f : finanse) {
+            for (Class<?> m : praca) {
+                int wynik = mediana(ekspertZMinistrami(f, m));
+                System.out.println("BALANS ministrowie " + f.getSimpleName() + " + " + m.getSimpleName() + ": " + wynik);
+                assertTrue(wynik > ekspert * 3 / 4, f.getSimpleName() + " + " + m.getSimpleName() + " daje tylko "
+                        + wynik + " dni przy " + ekspert + " u eksperta");
+            }
+        }
+    }
+
     static int mediana(Gracz gracz) {
         int[] dni = new int[GIER];
         for (int i = 0; i < GIER; i++) {
