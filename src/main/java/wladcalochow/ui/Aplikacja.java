@@ -95,6 +95,10 @@ public final class Aplikacja {
     private Istota aktor;
     private Istota cel;
     private int przewiniecie;
+    /** Ostatnia znana pozycja kursora myszy (do podświetlania przycisków); -1: nieznana. */
+    private int myszX = -1;
+    private int myszY = -1;
+    private static final int PRZEWIJANIE_KOLKIEM = 3;
     private String komunikat;
     private boolean radaWalkiPokazana;
     private volatile String nowaWersja;
@@ -150,16 +154,26 @@ public final class Aplikacja {
 
     public void uruchom() throws IOException {
         try {
+            // Czas gry (krok walki, sama gra) płynie co okres, także gdy ruch myszy ciągle przysyła zdarzenia.
+            long ostatniTik = System.currentTimeMillis();
             while (!koniec) {
                 rysuj();
-                Wejscie wejscie = terminal.czytaj(walkaTrwaSama() ? 450 : 300);
+                long okres = walkaTrwaSama() ? 450 : 300;
+                long minelo = System.currentTimeMillis() - ostatniTik;
+                Wejscie wejscie = terminal.czytaj(Math.max(1, okres - minelo));
                 switch (wejscie) {
-                    case Wejscie.Brak brak -> tik(System.currentTimeMillis());
+                    case Wejscie.Brak brak -> {
+                    }
                     case Wejscie.Koniec k -> {
                         zapiszPrzyWyjsciu();
                         koniec = true;
                     }
                     default -> obsluz(wejscie);
+                }
+                long teraz = System.currentTimeMillis();
+                if (!koniec && teraz - ostatniTik >= okres) {
+                    ostatniTik = teraz;
+                    tik(teraz);
                 }
             }
         } finally {
@@ -218,7 +232,27 @@ public final class Aplikacja {
     }
 
     void obsluz(Wejscie wejscie) {
+        if (wejscie instanceof Wejscie.Ruch ruch) {
+            // Najechanie: przycisk pod kursorem się podświetla, a w oknie zaznacza się opcja pod kursorem.
+            myszX = ruch.x();
+            myszY = ruch.y();
+            if (dialog != null) {
+                dialog.najedz(ruch.x(), ruch.y());
+            }
+            return;
+        }
+        if (wejscie instanceof Wejscie.Kolko kolko) {
+            // Kółko: w oknie przesuwa zaznaczenie, poza oknem przewija dziennik (w górę = starsze wpisy).
+            if (dialog != null) {
+                dialog.przewin(kolko.kierunek());
+            } else {
+                przewiniecie = Math.max(0, przewiniecie - kolko.kierunek() * PRZEWIJANIE_KOLKIEM);
+            }
+            return;
+        }
         if (wejscie instanceof Wejscie.Klik klik) {
+            myszX = klik.x();
+            myszY = klik.y();
             for (int i = strefy.size() - 1; i >= 0; i--) {
                 if (strefy.get(i).zawiera(klik.x(), klik.y())) {
                     strefy.get(i).akcja().run();
@@ -707,6 +741,12 @@ public final class Aplikacja {
             int gx = guzik.glowny() ? e.szer - w - 1 : x;
             int tlo = !guzik.aktywny() ? Paleta.GUZIK_WYLACZONY
                     : guzik.glowny() ? Paleta.GUZIK_GLOWNY : guzik.nowy() ? Paleta.GUZIK_NOWY : Paleta.GUZIK;
+            // Kursor nad aktywnym przyciskiem (i bez otwartego okna): przycisk jaśnieje.
+            boolean podMysza = guzik.aktywny() && dialog == null && myszX >= gx && myszX < gx + w
+                    && myszY >= y && myszY < y + 3;
+            if (podMysza) {
+                tlo = Paleta.mieszaj(tlo, 0xFFFFFF, 0.22);
+            }
             e.pisz(gx, y, "▄".repeat(w), tlo);
             e.wypelnij(gx, y + 1, w, 1, tlo);
             e.pisz(gx, y + 2, "▀".repeat(w), tlo);

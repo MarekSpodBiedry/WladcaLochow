@@ -247,6 +247,24 @@ final class Dialog {
         return samoZatwierdzane;
     }
 
+    /** Miejsca wybieralnych opcji z ostatniej klatki: x, y, szerokość, wysokość, numer opcji. */
+    private final List<int[]> miejscaOpcji = new ArrayList<>();
+
+    /** Myszka nad opcją: zaznacza ją (podświetlenie i opis na dole), tak jak strzałki. */
+    void najedz(int x, int y) {
+        for (int[] m : miejscaOpcji) {
+            if (x >= m[0] && x < m[0] + m[2] && y >= m[1] && y < m[1] + m[3]) {
+                wybrana = m[4];
+                return;
+            }
+        }
+    }
+
+    /** Kółko myszy: przesuwa zaznaczenie o jedną opcję w górę (-1) albo w dół (+1). */
+    void przewin(int kierunek) {
+        wybrana = nastepna(wybrana, kierunek < 0 ? -1 : 1);
+    }
+
     /** Wybiera zaznaczoną opcję, tak jakby gracz nacisnął Enter. */
     void zatwierdz() {
         wybierz(wybrana);
@@ -510,6 +528,7 @@ final class Dialog {
         int x = (e.szer - w) / 2;
         int y = Math.max(0, (e.wys - h) / 2);
 
+        miejscaOpcji.clear();
         e.ramka(x, y, w, h, Paleta.ZLOTO, Paleta.PANEL, tytul, Paleta.ZLOTO);
         int wiersz = y + 1;
         for (Linia linia : uklad.wiersze) {
@@ -534,6 +553,7 @@ final class Dialog {
                 }
                 int indeks = i;
                 strefy.dodaj(x + 1, wiersz, w - 2, wysokosc, () -> wybierz(indeks));
+                miejscaOpcji.add(new int[] {x + 1, wiersz, w - 2, wysokosc, indeks});
             } else if (opcja.znacznik() != null) {
                 e.pisz(x + 1, wiersz, opcja.znacznik(), Paleta.TEKST_SLABY);
             }
