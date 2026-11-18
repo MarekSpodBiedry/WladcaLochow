@@ -3,16 +3,27 @@ package wladcalochow.model;
 /** Coś, co wydarzyło się w grze. Model zwraca zdarzenia, interfejs je tylko pokazuje. */
 public sealed interface Zdarzenie {
 
-    enum Ton { NEUTRALNY, DOBRY, ZLY, ZLOTO, NAGLOWEK }
+    /** ALARM: zdarzenie, które zmienia loch na dłużej (odejście ministra, przegrana, ranni) i nie może umknąć. */
+    enum Ton { NEUTRALNY, DOBRY, ZLY, ZLOTO, NAGLOWEK, ALARM }
 
     String opis();
 
     Ton ton();
 
+    /** Czy to pojedynczy ruch w walce (cios, runda, ucieczka): dziennik zwija je po walce. */
+    default boolean walka() {
+        return false;
+    }
+
     record Informacja(String opis, Ton ton) implements Zdarzenie {
     }
 
     record NowaRunda(int numer) implements Zdarzenie {
+        @Override
+        public boolean walka() {
+            return true;
+        }
+
         @Override
         public String opis() {
             return "Runda " + numer;
@@ -25,6 +36,11 @@ public sealed interface Zdarzenie {
     }
 
     record Atak(Istota kto, Istota cel, int obrazenia, boolean trafiony) implements Zdarzenie {
+        @Override
+        public boolean walka() {
+            return true;
+        }
+
         @Override
         public String opis() {
             if (!trafiony) {
@@ -44,6 +60,11 @@ public sealed interface Zdarzenie {
 
     record Smierc(Istota kto, Istota zabojca, int zloto) implements Zdarzenie {
         @Override
+        public boolean walka() {
+            return true;
+        }
+
+        @Override
         public String opis() {
             String lup = zloto > 0 ? " " + zabojca.getImie() + " zabiera " + zloto + " złota." : "";
             return kto.getImie() + " (" + kto.nazwaRodzaju() + ") pada." + lup;
@@ -57,6 +78,11 @@ public sealed interface Zdarzenie {
 
     record Ucieczka(Istota kto) implements Zdarzenie {
         @Override
+        public boolean walka() {
+            return true;
+        }
+
+        @Override
         public String opis() {
             return kto.getImie() + " (" + kto.nazwaRodzaju() + ") ucieka z pola walki.";
         }
@@ -68,6 +94,11 @@ public sealed interface Zdarzenie {
     }
 
     record Ogluszenie(Istota kto) implements Zdarzenie {
+        @Override
+        public boolean walka() {
+            return true;
+        }
+
         @Override
         public String opis() {
             return "Ogłuszenie: " + kto.getImie() + " straci najbliższą kolejkę.";
@@ -81,6 +112,11 @@ public sealed interface Zdarzenie {
 
     record StrataKolejki(Istota kto) implements Zdarzenie {
         @Override
+        public boolean walka() {
+            return true;
+        }
+
+        @Override
         public String opis() {
             return kto.getImie() + " dochodzi do siebie po ogłuszeniu i traci kolejkę.";
         }
@@ -92,6 +128,11 @@ public sealed interface Zdarzenie {
     }
 
     record Kradziez(Istota kto, int kwota, boolean udana) implements Zdarzenie {
+        @Override
+        public boolean walka() {
+            return true;
+        }
+
         @Override
         public String opis() {
             if (!udana) {
@@ -114,7 +155,7 @@ public sealed interface Zdarzenie {
 
         @Override
         public Ton ton() {
-            return obronaUdana ? Ton.DOBRY : Ton.ZLY;
+            return obronaUdana ? Ton.DOBRY : Ton.ALARM;
         }
     }
 }

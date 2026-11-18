@@ -134,13 +134,15 @@ public class DzienGry implements Serializable {
 
     private void odejsciaNielojalnych(Loch loch, Random los, List<Zdarzenie> zdarzenia) {
         if (loch.getMinisterFinansow().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
+            bilans.odszedlMinister(loch.getMinisterFinansow().getImie() + " (finanse, nielojalny)");
             zdarzenia.add(new Informacja(loch.getMinisterFinansow().getImie() + " znika bez słowa (nielojalny). "
-                    + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
+                    + "Finanse przejmuje darmowy stażysta.", Ton.ALARM));
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
         }
         if (loch.getMinisterPracy().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
+            bilans.odszedlMinister(loch.getMinisterPracy().getImie() + " (kadry, nielojalny)");
             zdarzenia.add(new Informacja(loch.getMinisterPracy().getImie() + " znika bez słowa (nielojalny). "
-                    + "Kadry przejmuje darmowa stażystka.", Ton.ZLY));
+                    + "Kadry przejmuje darmowa stażystka.", Ton.ALARM));
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
         }
     }
@@ -153,8 +155,9 @@ public class DzienGry implements Serializable {
             bilans.pensja(pensjaFinansow);
         } else {
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
+            bilans.odszedlMinister(finansow.getImie() + " (finanse, brak pensji)");
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + finansow.getImie() + " odchodzi. "
-                    + "Finanse przejmuje darmowy stażysta.", Ton.ZLY));
+                    + "Finanse przejmuje darmowy stażysta.", Ton.ALARM));
         }
         MinisterPracy pracy = loch.getMinisterPracy();
         int pensjaPracy = pracy.pensjaDnia(bilans.przychody());
@@ -162,8 +165,9 @@ public class DzienGry implements Serializable {
             bilans.pensja(pensjaPracy);
         } else {
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
+            bilans.odszedlMinister(pracy.getImie() + " (kadry, brak pensji)");
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + pracy.getImie() + " odchodzi. "
-                    + "Kadry przejmuje darmowa stażystka.", Ton.ZLY));
+                    + "Kadry przejmuje darmowa stażystka.", Ton.ALARM));
         }
     }
 
@@ -247,7 +251,7 @@ public class DzienGry implements Serializable {
             bilans.pladrowanie(lup);
             bilans.obrona(BilansDnia.Obrona.BEZ_OBRONCOW);
             zdarzenia.add(new Informacja("Nikt nie broni lochu! Bohaterowie wynoszą cały skarbiec: "
-                    + lup + " złota.", Ton.ZLY));
+                    + lup + " złota.", Ton.ALARM));
             return null;
         }
 
@@ -338,7 +342,7 @@ public class DzienGry implements Serializable {
         }
         if (!ranni.isEmpty()) {
             zdarzenia.add(new Informacja("Przeżyli ciężko ranni: " + imiona(ranni)
-                    + ". Przez kilka dni nie będą walczyć ani kopać, a bohaterowie wyczują słabość lochu.", Ton.NEUTRALNY));
+                    + ". Przez kilka dni nie będą walczyć ani kopać, a bohaterowie wyczują słabość lochu.", Ton.ALARM));
         }
         if (!polegli.isEmpty()) {
             zdarzenia.add(new Informacja("Polegli w obronie lochu: " + imiona(polegli) + ".", Ton.ZLY));
@@ -382,12 +386,12 @@ public class DzienGry implements Serializable {
         }
         if (!wynik.nieoplaceni().isEmpty()) {
             zdarzenia.add(new Informacja("Zabrakło żołdu dla: " + imiona(wynik.nieoplaceni())
-                    + ". Ich morale spada.", Ton.ZLY));
+                    + ". Ich morale spada.", Ton.ALARM));
         }
         if (!wynik.odeszli().isEmpty()) {
             wynik.odeszli().forEach(loch::usun);
             zdarzenia.add(new Informacja("Bez żołdu i z fatalnym morale odchodzą z lochu: "
-                    + imiona(wynik.odeszli()) + ".", Ton.ZLY));
+                    + imiona(wynik.odeszli()) + ".", Ton.ALARM));
         }
 
         bilans.wieczor(wynik.wyplacono(), wynik.nieoplaceni(), wynik.odeszli(), wydobycie,

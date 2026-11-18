@@ -27,7 +27,11 @@ public class Gra implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public record WpisDziennika(String tekst, Ton ton) implements Serializable {
+    /** Wpis dziennika; walka: pojedynczy ruch w walce (stare zapisy bez tego pola wczytują się jako false). */
+    public record WpisDziennika(String tekst, Ton ton, boolean walka) implements Serializable {
+        public WpisDziennika(String tekst, Ton ton) {
+            this(tekst, ton, false);
+        }
     }
 
     public static final int ZLOTO_STARTOWE = 300;
@@ -259,15 +263,15 @@ public class Gra implements Serializable {
         if (loch.czyZdobyty()) {
             koniecGry = true;
             zdarzenia.add(new Informacja("Trzecia przegrana obrona z rzędu: bohaterowie zdobywają loch. "
-                    + "To koniec panowania.", Ton.ZLY));
+                    + "To koniec panowania.", Ton.ALARM));
         } else if (loch.getListaPotworow().isEmpty() && loch.getSkarbiec().czyPusty()) {
             koniecGry = true;
             zdarzenia.add(new Informacja("Loch opustoszał, a skarbiec świeci pustkami. To koniec panowania.",
-                    Ton.ZLY));
+                    Ton.ALARM));
         } else if (loch.getPorazkiZRzedu() > 0 && dzien.getWalka() != null
                 && dzien.getWalka().getWynik() == Walka.Wynik.OBRONA_PRZEGRANA) {
             zdarzenia.add(new Informacja("Przegrane obrony z rzędu: " + loch.getPorazkiZRzedu() + " z "
-                    + Loch.PORAZKI_DO_UPADKU + ". Przy trzeciej loch upadnie.", Ton.ZLY));
+                    + Loch.PORAZKI_DO_UPADKU + ". Przy trzeciej loch upadnie.", Ton.ALARM));
         }
         loguj(zdarzenia);
         return zdarzenia;
@@ -283,7 +287,7 @@ public class Gra implements Serializable {
     }
 
     private void loguj(Zdarzenie zdarzenie) {
-        dziennik.add(new WpisDziennika(zdarzenie.opis(), zdarzenie.ton()));
+        dziennik.add(new WpisDziennika(zdarzenie.opis(), zdarzenie.ton(), zdarzenie.walka()));
         if (dziennik.size() > MAX_DZIENNIK) {
             dziennik.subList(0, dziennik.size() - MAX_DZIENNIK).clear();
         }

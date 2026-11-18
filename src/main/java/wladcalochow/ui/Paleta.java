@@ -56,6 +56,7 @@ final class Paleta {
             case ZLY -> CZERWIEN;
             case ZLOTO -> ZLOTO;
             case NAGLOWEK -> POMARANCZ;
+            case ALARM -> CZERWIEN;
         };
     }
 

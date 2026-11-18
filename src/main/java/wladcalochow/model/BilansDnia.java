@@ -28,6 +28,8 @@ public class BilansDnia implements Serializable {
     private final List<String> zatrudnieni = new ArrayList<>();
     private final List<String> polegli = new ArrayList<>();
     private final List<String> odeszli = new ArrayList<>();
+    /** Ministrowie, którzy dziś odeszli (nielojalni albo bez pensji). Starsze zapisy: null. */
+    private List<String> odeszliMinistrowie = new ArrayList<>();
     private final List<String> nieoplaceni = new ArrayList<>();
     private final List<String> awanse = new ArrayList<>();
 
@@ -152,6 +154,17 @@ public class BilansDnia implements Serializable {
 
     public List<String> getPolegli() {
         return List.copyOf(polegli);
+    }
+
+    void odszedlMinister(String opis) {
+        if (odeszliMinistrowie == null) {
+            odeszliMinistrowie = new ArrayList<>();
+        }
+        odeszliMinistrowie.add(opis);
+    }
+
+    public List<String> getOdeszliMinistrowie() {
+        return odeszliMinistrowie == null ? List.of() : List.copyOf(odeszliMinistrowie);
     }
 
     public List<String> getOdeszli() {
