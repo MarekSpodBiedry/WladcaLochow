@@ -47,6 +47,11 @@ public class Gra implements Serializable {
     private final List<MinisterFinansow> startowiFinansow;
     private final List<MinisterPracy> startowiPracy;
     private final List<WpisDziennika> dziennik = new ArrayList<>();
+    /**
+     * Każda decyzja gracza po kolei („dzień 3: POSTAWA ODWOD”), w języku poleceń mostu Claude'a. Razem z ziarnem
+     * pozwala odtworzyć całą rozgrywkę. Starsze zapisy nie mają tej listy (null).
+     */
+    private List<String> decyzje = new ArrayList<>();
 
     private int numerDnia;
     private DzienGry dzien;
@@ -84,7 +89,36 @@ public class Gra implements Serializable {
         }
         loch.setMinisterFinansow(finansow);
         loch.setMinisterPracy(pracy);
+        zapiszDecyzje("START MF" + (startowiFinansow.indexOf(finansow) + 1) + " MP" + (startowiPracy.indexOf(pracy) + 1)
+                + (samouczek ? " SAMOUCZEK" : ""));
         rozpocznijDzien();
+    }
+
+    private void zapiszDecyzje(String polecenie) {
+        if (decyzje == null) {
+            decyzje = new ArrayList<>();
+        }
+        decyzje.add("dzień " + numerDnia + ": " + polecenie);
+    }
+
+    /** Wszystkie decyzje gracza po kolei (pusta lista dla zapisów sprzed tej funkcji). */
+    public List<String> getDecyzje() {
+        return decyzje == null ? List.of() : List.copyOf(decyzje);
+    }
+
+    /** Rozkaz jako polecenie (to samo, które rozumie most Claude'a); numery liczone od 1, z porannych list. */
+    String polecenie(Rozkaz rozkaz) {
+        List<Potwor> potwory = loch.getListaPotworow();
+        return switch (rozkaz) {
+            case Rozkaz.ZmianaMinistraFinansow r -> "MINISTER MF" + (dzien.getKandydaciFinansow().indexOf(r.nowy()) + 1);
+            case Rozkaz.ZmianaMinistraPracy r -> "MINISTER MP" + (dzien.getKandydaciPracy().indexOf(r.nowy()) + 1);
+            case Rozkaz.LimitRekrutacji r -> "LIMIT " + r.procent();
+            case Rozkaz.ZmianaPostawy r -> "POSTAWA " + r.postawa().name();
+            case Rozkaz.Premia r -> "PREMIA P" + (potwory.indexOf(r.potwor()) + 1);
+            case Rozkaz.Zwolnienie r -> "ZWOLNIJ P" + (potwory.indexOf(r.potwor()) + 1);
+            case Rozkaz.Szpital r -> "SZPITAL P" + (potwory.indexOf(r.potwor()) + 1);
+            case Rozkaz.ZakupUlepszenia r -> "ULEPSZENIE " + r.ulepszenie().name();
+        };
     }
 
     public void rozpocznijDzien() {
@@ -181,6 +215,8 @@ public class Gra implements Serializable {
             throw new IllegalStateException(powod);
         }
         int koszt = koszt(rozkaz);
+        // Polecenie zapisujemy przed wykonaniem: zwolnienie zmienia numery potworów.
+        zapiszDecyzje(polecenie(rozkaz));
         loch.getSkarbiec().wyplac(koszt);
         dzien.zuzyjRozkaz(koszt);
         String skutek = switch (rozkaz) {
