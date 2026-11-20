@@ -701,8 +701,11 @@ public final class Aplikacja {
     // ---- dziennik ----
 
     /** Jedna linia dziennika na ekranie: tekst, kolor, pogrubienie i tło całej linii (BEZ_ZMIAN: bez tła). */
-    record WierszDziennika(String tekst, int kolor, boolean gruby, int tlo) {
+    record WierszDziennika(String etykieta, String tekst, int kolor, boolean gruby, int tlo) {
     }
+
+    /** Szerokość kolumny z etykietami w dzienniku („Kandydaci” + odstęp). */
+    private static final int KOLUMNA_ETYKIET = 12;
 
     /**
      * Dziennik do czytania, a nie ściana tekstu:
@@ -742,7 +745,7 @@ public final class Aplikacja {
                     }
                     j++;
                 }
-                linie.add(new WierszDziennika("  ⚔ walka: " + rundy + " rund, " + ciosy + " ruchów",
+                linie.add(new WierszDziennika("Walka", rundy + " rund, " + ciosy + " ruchów",
                         Paleta.TEKST_SLABY, false, Ekran.BEZ_ZMIAN));
                 i = j - 1;
                 continue;
@@ -750,16 +753,18 @@ public final class Aplikacja {
             String tekst = wpis.tekst();
             if (wpis.ton() == Zdarzenie.Ton.NAGLOWEK && tekst.startsWith("Dzień ")) {
                 String pasek = " " + tekst.toUpperCase() + " ";
-                linie.add(new WierszDziennika(pasek, Paleta.ZLOTO, true, Paleta.NAGLOWEK));
+                linie.add(new WierszDziennika("", pasek, Paleta.ZLOTO, true, Paleta.NAGLOWEK));
                 continue;
             }
             boolean alarm = wpis.ton() == Zdarzenie.Ton.ALARM;
             boolean naglowek = wpis.ton() == Zdarzenie.Ton.NAGLOWEK;
-            String znak = alarm ? "! " : naglowek ? (tekst.startsWith("Atak!") ? "⚔ " : "") : "· ";
+            // Ciosy trwającej walki zostają zdaniami; reszta to krótka etykieta i treść w dwóch kolumnach.
+            SkrotDziennika.Skrot skrot = wpis.walka() ? new SkrotDziennika.Skrot("", tekst) : SkrotDziennika.skroc(tekst);
+            int naTresc = Math.max(10, szer - KOLUMNA_ETYKIET);
             boolean pierwszy = true;
-            for (String wiersz : Ekran.zawin(tekst, szer - Ekran.szerokosc(znak))) {
-                String linia = (pierwszy ? znak : " ".repeat(Ekran.szerokosc(znak))) + wiersz;
-                linie.add(new WierszDziennika(linia, alarm ? Paleta.TEKST : Paleta.ton(wpis.ton()), alarm || naglowek,
+            for (String wiersz : Ekran.zawin(skrot.tresc(), naTresc)) {
+                linie.add(new WierszDziennika(pierwszy ? skrot.etykieta() : "", wiersz,
+                        alarm ? Paleta.TEKST : Paleta.ton(wpis.ton()), alarm || naglowek,
                         alarm ? tloAlarmu : Ekran.BEZ_ZMIAN));
                 pierwszy = false;
             }
@@ -783,7 +788,14 @@ public final class Aplikacja {
             if (l.tlo() != Ekran.BEZ_ZMIAN) {
                 e.wypelnij(x + 1, wy, w - 2, 1, l.tlo());
             }
-            e.pisz(x + 2, wy, l.tekst(), l.kolor(), Ekran.BEZ_ZMIAN, l.gruby());
+            if (l.tlo() == Paleta.NAGLOWEK) {
+                // Pasek dnia zaczyna się od lewej krawędzi, bez kolumny etykiet.
+                e.pisz(x + 2, wy, l.tekst(), l.kolor(), Ekran.BEZ_ZMIAN, l.gruby());
+                continue;
+            }
+            e.pisz(x + 2, wy, l.etykieta(), l.tlo() == Ekran.BEZ_ZMIAN ? Paleta.TEKST_SLABY : Paleta.TEKST,
+                    Ekran.BEZ_ZMIAN, l.tlo() != Ekran.BEZ_ZMIAN);
+            e.pisz(x + 2 + KOLUMNA_ETYKIET, wy, l.tekst(), l.kolor(), Ekran.BEZ_ZMIAN, l.gruby());
         }
         if (przewiniecie > 0) {
             String info = " ↓ nowsze wpisy poniżej ";
