@@ -84,6 +84,8 @@ class OdtwarzanieTest {
                         + "206 złota. Ocena: słabszy od lochu."));
         assertEquals(new SkrotDziennika.Skrot("Kandydaci", "Chrzęst goblin 11 · Kark ork 25"),
                 SkrotDziennika.skroc("Kandydaci do pracy: Chrzęst (Goblin, żołd 11), Kark (Ork, żołd 25)."));
+        assertEquals(new SkrotDziennika.Skrot("Kandydaci", "Chrzęst goblin moc 54 żołd 11 · Kark ork moc 80 żołd 25"),
+                SkrotDziennika.skroc("Kandydaci do pracy: Chrzęst (Goblin, moc 54, żołd 11), Kark (Ork, moc 80, żołd 25)."));
         assertEquals(new SkrotDziennika.Skrot("Rozkaz", "Kopalnia ma teraz poziom 1 · −70"),
                 SkrotDziennika.skroc("Rozkaz: Kopalnia ma teraz poziom 1. Koszt: 70 złota."));
         assertEquals("", SkrotDziennika.skroc("Coś zupełnie nowego.").etykieta(), "nieznane zdanie zostaje bez zmian");

@@ -2088,6 +2088,27 @@ public final class Aplikacja {
                     Wiersze.komorka(String.valueOf(p.getZold()), Paleta.ZLOTO),
                     stanPotwora(p)), List.of(), true, () -> dialogPotwor(p)));
         }
+        // Dzisiejsi kandydaci z mocą: widać, czy warto zwolnić najsłabszego, żeby zrobić im miejsce.
+        List<Potwor> kandydaci = wedlugMocy(gra.getDzien() == null ? List.of() : gra.getDzien().getKandydaci());
+        if (!kandydaci.isEmpty()) {
+            int najslabszy = potwory.isEmpty() ? 0 : moc(potwory.get(potwory.size() - 1));
+            opcje.add(Wiersze.odstep());
+            opcje.add(Wiersze.sekcja("KANDYDACI DZIŚ", "zatrudnia minister, gdy jest miejsce i złoto"));
+            for (Potwor k : kandydaci) {
+                boolean duzoSilniejszy = najslabszy > 0 && moc(k) > 2 * najslabszy;
+                opcje.add(Dialog.Opcja.info(0, Wiersze.wiersz(
+                        Wiersze.komorka(Wiersze.k(Sprite.emoji(k) + " ", Paleta.TEKST), Wiersze.k(k.getImie(), Paleta.TEKST)),
+                        Wiersze.komorka(k.nazwaRodzaju(), Paleta.TEKST_SLABY),
+                        Wiersze.komorka(Wiersze.k("★" + k.getPoziom(), Paleta.ZLOTO)),
+                        Wiersze.komorka(Wiersze.g(String.valueOf(moc(k)), duzoSilniejszy ? Paleta.ZIELEN : Paleta.TEKST)),
+                        Wiersze.komorka(String.valueOf(k.getSilaAtaku()), Paleta.TEKST),
+                        Wiersze.komorka(String.valueOf(k.getMaxPunktyZycia()), Paleta.TEKST),
+                        Wiersze.komorka("", Paleta.TEKST),
+                        Wiersze.komorka(String.valueOf(k.getZold()), Paleta.ZLOTO),
+                        duzoSilniejszy ? Wiersze.komorka("▲ 2× najsłabszego", Paleta.ZIELEN)
+                                : Wiersze.komorka("", Paleta.TEKST)), null));
+            }
+        }
         dialog = Dialog.zLiniami("Potwory w lochu",
                 List.of(pasekRozkazow(), Dialog.Linia.tekst("Wybierz potwora, żeby dać mu premię albo go zwolnić.",
                         Paleta.TEKST_SLABY)),

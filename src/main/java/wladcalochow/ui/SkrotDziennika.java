@@ -121,11 +121,15 @@ final class SkrotDziennika {
 
     /** „Chrzęst (Goblin, żołd 11), Kark (Ork, żołd 25)” → „Chrzęst goblin 11 · Kark ork 25”. */
     private static String kandydaci(String tekst) {
-        Matcher m = Pattern.compile("\\s*([^,(]+?) \\((\\p{L}+), żołd (\\d+)\\)").matcher(tekst);
+        // Moc kandydata jest w dzienniku od 1.12; starsze zapisy mają tylko rodzaj i żołd.
+        Matcher m = Pattern.compile("\\s*([^,(]+?) \\((\\p{L}+)(?:, moc (\\d+))?, żołd (\\d+)\\)").matcher(tekst);
         StringBuilder s = new StringBuilder();
         while (m.find()) {
-            s.append(s.isEmpty() ? "" : " · ").append(m.group(1)).append(' ')
-                    .append(m.group(2).toLowerCase()).append(' ').append(m.group(3));
+            s.append(s.isEmpty() ? "" : " · ").append(m.group(1)).append(' ').append(m.group(2).toLowerCase());
+            if (m.group(3) != null) {
+                s.append(" moc ").append(m.group(3)).append(" żołd");
+            }
+            s.append(' ').append(m.group(4));
         }
         return s.isEmpty() ? tekst : s.toString();
     }

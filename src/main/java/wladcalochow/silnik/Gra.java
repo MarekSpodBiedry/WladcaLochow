@@ -154,7 +154,8 @@ public class Gra implements Serializable {
             loguj(new Informacja("Kandydaci do pracy: brak.", Ton.NEUTRALNY));
         } else {
             String lista = dzien.getKandydaci().stream()
-                    .map(p -> p.getImie() + " (" + p.nazwaRodzaju() + ", żołd " + p.getZold() + ")")
+                    .map(p -> p.getImie() + " (" + p.nazwaRodzaju() + ", moc " + DzienGry.wartoscOddzialu(List.of(p))
+                            + ", żołd " + p.getZold() + ")")
                     .collect(Collectors.joining(", "));
             loguj(new Informacja("Kandydaci do pracy: " + lista + ".", Ton.NEUTRALNY));
         }
