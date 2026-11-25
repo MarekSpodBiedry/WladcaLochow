@@ -175,6 +175,39 @@ class DzienGryTest {
         assertEquals(5, loch.getSkarbiec().getZloto());
     }
 
+    /** Brak złota na łapówkę szkodzi: bohaterowie są śmielsi, a wymuszona walka nie zeruje ceny łapówki. */
+    @Test
+    void walkaPoNieudanejLapowceNieZerujeJejCeny() {
+        Loch loch = loch(5);
+        loch.zatrudnij(new Ork("Gruk", 14, 60, 70, 0));
+        loch.zanotujLapowke();
+        loch.zanotujLapowke();
+        loch.setPostawa(Postawa.PRZEKUPSTWO);
+        Rycerz sir = new Rycerz("Sir", 16, 80, 90, 10);
+        DzienGry dzien = dzien(0, List.of(), List.of(sir));
+        dzien.rozegrajPoranek(loch, new Random(1));
+        Walka walka = dzien.przygotujObrone(loch, new Random(1), new ArrayList<>());
+        assertEquals(Math.round(16 * (1 + DzienGry.OSMIELENIE)), sir.getSilaAtaku(), "bohaterowie atakują śmielej");
+        while (!walka.czyZakonczona()) {
+            walka.krok();
+        }
+        dzien.zakonczObrone(loch, new Random(1));
+        assertEquals(2, loch.getLapowkiZRzedu(), "bohaterowie wiedzą, że w skarbcu pusto");
+
+        // Zwykła walka (bez nieudanej łapówki) nadal zeruje cenę.
+        loch.zatrudnij(new Ork("Kark", 30, 200, 90, 0));
+        loch.setPostawa(Postawa.PELNA_OBRONA);
+        loch.getSkarbiec().wplac(1000);
+        DzienGry zwykly = dzien(0, List.of(), List.of(new Rycerz("Sir", 16, 80, 90, 10)));
+        zwykly.rozegrajPoranek(loch, new Random(2));
+        Walka druga = zwykly.przygotujObrone(loch, new Random(2), new ArrayList<>());
+        while (!druga.czyZakonczona()) {
+            druga.krok();
+        }
+        zwykly.zakonczObrone(loch, new Random(2));
+        assertEquals(0, loch.getLapowkiZRzedu());
+    }
+
     @Test
     void pulapkiRaniaBohaterowPrzedWalka() {
         Loch loch = loch(1000);

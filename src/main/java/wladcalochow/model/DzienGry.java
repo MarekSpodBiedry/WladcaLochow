@@ -32,6 +32,10 @@ public class DzienGry implements Serializable {
     public static final int MAX_PORANKOW_RANNEGO = 4;
 
     private final int numer;
+    /** O ile silniejsi są bohaterowie, gdy loch chciał ich przekupić, a zabrakło złota. */
+    public static final double OSMIELENIE = 0.15;
+    /** Postawa Przekupstwo, ale zabrakło złota: ta walka nie zeruje ceny łapówki. */
+    private boolean lapowkaNieudana;
     /** Stażysta finansów wygadał się w karczmie o skarbcu: dzisiejszy atak jest silniejszy. */
     private boolean wygadanySkarbiec;
     private final int dochodBazowy;
@@ -261,8 +265,12 @@ public class DzienGry implements Serializable {
                         + "Następnym razem zażądają więcej.", Ton.ZLOTO));
                 return null;
             }
-            zdarzenia.add(new Informacja("Na łapówkę (" + cena + " złota) nie starczyło. Loch musi się bronić.",
-                    Ton.ZLY));
+            // Kto prosi, żeby nie walczyć, a potem nie płaci, wychodzi na słabego: bohaterowie atakują śmielej.
+            lapowkaNieudana = true;
+            bohaterowie.forEach(b -> b.zahartuj(OSMIELENIE));
+            zdarzenia.add(new Informacja("Na łapówkę (" + cena + " złota) nie starczyło. Bohaterowie wiedzą już, "
+                    + "że w skarbcu pusto: atakują śmielej (+" + Math.round(OSMIELENIE * 100) + "% siły), "
+                    + "a cena łapówki nie spadnie.", Ton.ALARM));
         }
 
         int pulapki = loch.poziom(Ulepszenie.PULAPKI);
@@ -277,7 +285,7 @@ public class DzienGry implements Serializable {
         List<Potwor> wojownicy = loch.wojownicy();
         if (wojownicy.isEmpty()) {
             int lup = skarbiec.zabierz(skarbiec.getZloto());
-            loch.zanotujWynikObrony(false);
+            loch.zanotujWynikObrony(false, !lapowkaNieudana);
             bilans.pladrowanie(lup);
             bilans.obrona(BilansDnia.Obrona.BEZ_OBRONCOW);
             zdarzenia.add(new Informacja("Nikt nie broni lochu! Bohaterowie wynoszą cały skarbiec: "
@@ -308,8 +316,13 @@ public class DzienGry implements Serializable {
      * bez walki pomiędzy, po negocjacjach Ministra Finansów.
      */
     public int kosztPrzekupstwa(Loch loch) {
+        return cenaPrzekupstwa(loch, bohaterowie);
+    }
+
+    /** Cena łapówki dla podanego oddziału (zwiad liczy z niej widełki, zanim powstanie dzień). */
+    public static int cenaPrzekupstwa(Loch loch, List<? extends Istota> oddzial) {
         return loch.getMinisterFinansow().cenaPoNegocjacjach(
-                (int) Math.round(wartoscOddzialu(bohaterowie) * loch.mnoznikLapowki()
+                (int) Math.round(wartoscOddzialu(oddzial) * loch.mnoznikLapowki()
                         * (loch.getMinisterFinansow().ma(CechaMinistra.NEGOCJATOR) ? 1 - RABAT_NEGOCJATORA : 1)));
     }
 
@@ -334,7 +347,7 @@ public class DzienGry implements Serializable {
         }
         Skarbiec skarbiec = loch.getSkarbiec();
         boolean udana = walka.getWynik() == Walka.Wynik.OBRONA_UDANA;
-        loch.zanotujWynikObrony(udana);
+        loch.zanotujWynikObrony(udana, !lapowkaNieudana);
         bilans.obrona(udana ? BilansDnia.Obrona.WYGRANA : BilansDnia.Obrona.PRZEGRANA);
         bilans.kradziez(zlotoPrzedWalka - skarbiec.getZloto());
         if (walka.getWynik() == Walka.Wynik.OBRONA_PRZEGRANA) {

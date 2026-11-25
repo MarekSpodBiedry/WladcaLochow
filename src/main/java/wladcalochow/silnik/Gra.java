@@ -374,7 +374,7 @@ public class Gra implements Serializable {
     /** Łapówka, którą trzeba będzie dziś zapłacić, jeśli obowiązuje przekupstwo, a zwiad widzi bohaterów. */
     public int zaplanowanaLapowka() {
         return dzien == null || loch.getPostawa() != wladcalochow.model.strategia.Postawa.PRZEKUPSTWO
-                ? 0 : dzien.getRaport().szacowanaSila();
+                ? 0 : dzien.getRaport().lapowkaMax();
     }
 
     /**

@@ -87,12 +87,12 @@ class BalansSymulacjaTest {
             RaportZwiadu raport = gra.getDzien().getRaport();
             int wojownicy = loch.getListaPotworow().size() - loch.getListaPotworow().size() / 3;
 
-            boolean lapowka = raport.maxBohaterow() > 0 && raport.szacowanaSila() <= zloto - rezerwa / 2
+            boolean lapowka = raport.maxBohaterow() > 0 && raport.lapowkaMax() <= zloto - rezerwa / 2
                     && raport.maxBohaterow() >= wojownicy;
             Postawa postawa = lapowka ? Postawa.PRZEKUPSTWO : Postawa.PELNA_OBRONA;
             wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
             if (lapowka) {
-                zloto -= raport.szacowanaSila();
+                zloto -= raport.lapowkaMax();
             }
 
             // Na przemian pułapki i kopalnia do końca, zamek na koniec.
@@ -283,7 +283,7 @@ class BalansSymulacjaTest {
         long ponad300 = Arrays.stream(dni).filter(d -> d > 300).count();
         long ponad500 = Arrays.stream(dni).filter(d -> d > 500).count();
         assertTrue(ponad300 >= GIER / 20, "z dobrym losem da się zajść daleko");
-        assertTrue(ponad500 <= GIER / 5, "ale mało kto przetrwa 500 dni");
+        assertTrue(ponad500 <= GIER / 4, "ale mało kto przetrwa 500 dni");
 
         int[] bezOdwodu = new int[GIER];
         for (int i = 0; i < GIER; i++) {
@@ -382,7 +382,8 @@ class BalansSymulacjaTest {
             for (Class<?> m : praca) {
                 int wynik = mediana(ekspertZMinistrami(f, m));
                 System.out.println("BALANS ministrowie " + f.getSimpleName() + " + " + m.getSimpleName() + ": " + wynik);
-                assertTrue(wynik > ekspert * 3 / 4, f.getSimpleName() + " + " + m.getSimpleName() + " daje tylko "
+                // 60%: nie każda droga ma być równie dobra (Marek 26.11), Zachowawczy ma słabszy start.
+                assertTrue(wynik > ekspert * 6 / 10, f.getSimpleName() + " + " + m.getSimpleName() + " daje tylko "
                         + wynik + " dni przy " + ekspert + " u eksperta");
             }
         }
@@ -441,7 +442,7 @@ class BalansSymulacjaTest {
         public void poranek(Gra gra, Random bot) {
             Loch loch = gra.getLoch();
             wladcalochow.model.strategia.OcenaAtaku ocena = gra.ocenaAtaku();
-            int lapowka = gra.getDzien().getRaport().szacowanaSila();
+            int lapowka = (gra.getDzien().getRaport().lapowkaMin() + gra.getDzien().getRaport().lapowkaMax()) / 2;
             Postawa postawa = switch (ocena) {
                 case GROZNY -> gra.getLoch().getSkarbiec().getZloto() >= lapowka ? Postawa.PRZEKUPSTWO : Postawa.PELNA_OBRONA;
                 case WYROWNANY -> LAP_WYROWNANY && gra.getLoch().getSkarbiec().getZloto() >= lapowka

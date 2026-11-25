@@ -87,9 +87,10 @@ public final class Ekspert {
         String powodPostawy = "atak nie jest groźny";
         if (raport.maxBohaterow() > 0) {
             boolean groznie = raport.szacowanaSila() >= obrona * 0.8;
-            if (groznie && raport.szacowanaSila() <= zloto - pensje) {
+            // Środek widełek: świadome ryzyko. Płacenie tylko przy górnej granicy skracało grę eksperta (288 dni).
+            if (groznie && (raport.lapowkaMin() + raport.lapowkaMax()) / 2 <= zloto - pensje) {
                 postawa = Postawa.PRZEKUPSTWO;
-                zloto -= raport.szacowanaSila();
+                zloto -= raport.lapowkaMax();
                 powodPostawy = "atak groźny, stać cię na łapówkę";
             } else if (groznie) {
                 powodPostawy = "atak groźny, łapówka za droga";

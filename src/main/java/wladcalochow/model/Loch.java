@@ -50,8 +50,18 @@ public class Loch implements Serializable {
 
     /** Udana obrona zeruje licznik porażek, przegrana go zwiększa. Każda walka zeruje licznik łapówek. */
     public void zanotujWynikObrony(boolean udana) {
+        zanotujWynikObrony(udana, true);
+    }
+
+    /**
+     * Jak wyżej, ale walka wymuszona brakiem złota na łapówkę licznika łapówek nie zeruje: bohaterowie
+     * wiedzą, że w skarbcu pusto, i następnym razem nie zejdą z ceny.
+     */
+    public void zanotujWynikObrony(boolean udana, boolean zerujLapowki) {
         porazkiZRzedu = udana ? 0 : porazkiZRzedu + 1;
-        lapowkiZRzedu = 0;
+        if (zerujLapowki) {
+            lapowkiZRzedu = 0;
+        }
     }
 
     /** Każda kolejna łapówka bez walki pomiędzy jest droższa: bohaterowie wiedzą, że loch płaci. */

@@ -69,7 +69,7 @@ public final class GeneratorZdarzen {
                     loch.getPostawa() == Postawa.ODWOD, mnoznik, los);
             boolean nieslowny = loch.getMinisterFinansow().ma(WadaMinistra.NIESLOWNY)
                     || loch.getMinisterPracy().ma(WadaMinistra.NIESLOWNY);
-            raport = zwiad(bohaterowie, los, loch.mnoznikLapowki(), nieslowny);
+            raport = zwiad(bohaterowie, los, loch.mnoznikLapowki(), nieslowny, DzienGry.cenaPrzekupstwa(loch, bohaterowie));
         }
         Set<String> ministrowie = new HashSet<>();
         ministrowie.add(loch.getMinisterFinansow().getImie());
@@ -173,6 +173,15 @@ public final class GeneratorZdarzen {
 
     /** Zwiad nie jest dokładny: podaje przedział liczebności, czasem jeden rodzaj i szacunek łapówki. */
     static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los, double mnoznikLapowki, boolean nieslowny) {
+        return zwiad(bohaterowie, los, mnoznikLapowki, nieslowny, 0);
+    }
+
+    /**
+     * Raport zwiadu. Widełki ceny łapówki liczymy od prawdziwej ceny (ze zniżkami ministra) z tym samym błędem
+     * co szacunek: prawdziwa cena zawsze mieści się w widełkach, ale gracz nie wie, gdzie dokładnie.
+     */
+    static RaportZwiadu zwiad(List<Bohater> bohaterowie, Random los, double mnoznikLapowki, boolean nieslowny,
+                              int cena) {
         // Niesłowny minister przekazuje raport byle jak: szersze widełki, bez rodzaju, mniej dokładna cena.
         int ilu = bohaterowie.size();
         int rozrzut = nieslowny ? 4 : 2;
@@ -187,6 +196,12 @@ public final class GeneratorZdarzen {
             double blad = nieslowny ? 0.6 + 0.8 * los.nextDouble() : 0.8 + 0.4 * los.nextDouble();
             szacunek = (int) Math.round(DzienGry.wartoscOddzialu(bohaterowie) * mnoznikLapowki * blad);
             min = Math.max(1, min);
+            if (cena > 0) {
+                double margines = nieslowny ? 0.4 : 0.2;
+                double srodek = cena * blad;
+                return new RaportZwiadu(min, max, rodzaj, szacunek, (int) Math.floor(srodek / (1 + margines)),
+                        (int) Math.ceil(srodek / (1 - margines)));
+            }
         }
         return new RaportZwiadu(min, max, rodzaj, szacunek);
     }

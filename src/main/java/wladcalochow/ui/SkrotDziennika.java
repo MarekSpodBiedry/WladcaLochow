@@ -108,8 +108,12 @@ final class SkrotDziennika {
         if (pewny.find()) {
             s.append(" · w tym ").append(pewny.group(1).toLowerCase());
         }
+        // Od 1.12 zwiad podaje widełki („od A do B złota”), wcześniej jedną liczbę („około N złota”).
+        Matcher widelki = Pattern.compile("od (\\d+) do (\\d+) złota").matcher(tekst);
         Matcher lapowka = Pattern.compile("około (\\d+) złota").matcher(tekst);
-        if (lapowka.find()) {
+        if (widelki.find()) {
+            s.append(" · łapówka ").append(widelki.group(1)).append('–').append(widelki.group(2));
+        } else if (lapowka.find()) {
             s.append(" · łapówka ").append(lapowka.group(1));
         }
         Matcher ocena = Pattern.compile("Ocena: ([^.]+)\\.").matcher(tekst);

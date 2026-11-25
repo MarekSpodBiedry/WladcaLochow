@@ -1974,16 +1974,17 @@ public final class Aplikacja {
             k.add(Wiersze.slaby("  ·  na pewno "));
             k.add(Wiersze.k(raport.ujawnionyRodzaj(), Paleta.TEKST));
         }
-        if (raport.szacowanaSila() > 0) {
-            k.add(Wiersze.slaby("  ·  łapówka ok. "));
-            k.add(Wiersze.g(raport.szacowanaSila() + " złota", Paleta.ZLOTO));
+        if (raport.lapowkaMax() > 0) {
+            k.add(Wiersze.slaby("  ·  łapówka "));
+            k.add(Wiersze.g(raport.widelki() + " złota", Paleta.ZLOTO));
         }
         return new Dialog.Linia(k);
     }
 
     private void dialogPostawa() {
         Postawa obecna = gra.getLoch().getPostawa();
-        int lapowka = gra.getDzien().getRaport().szacowanaSila();
+        RaportZwiadu raport = gra.getDzien().getRaport();
+        int lapowka = raport.lapowkaMax();
         List<Dialog.Opcja> opcje = new ArrayList<>();
         opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Postawa", "Na skrót", "Koszt"), null));
         for (Postawa postawa : Postawa.values()) {
@@ -1991,7 +1992,7 @@ public final class Aplikacja {
                     ? Wiersze.komorka(Wiersze.g(postawa.nazwa(), Paleta.TEKST), Wiersze.slaby(" teraz"))
                     : Wiersze.komorka(Wiersze.g(postawa.nazwa(), Paleta.TEKST));
             List<Dialog.Kawalek> koszt = postawa == Postawa.PRZEKUPSTWO && lapowka > 0
-                    ? Wiersze.komorka(Wiersze.g("ok. " + lapowka, Paleta.ZLOTO))
+                    ? Wiersze.komorka(Wiersze.g(raport.widelki(), Paleta.ZLOTO))
                     : Wiersze.komorka("–", Paleta.TEKST_SLABY);
             opcje.add(wierszRozkazu(0, Wiersze.wiersz(nazwa, Wiersze.komorka(postawaKrotko(postawa), Paleta.TEKST), koszt),
                     List.of(Dialog.Linia.tekst(postawa.opis(), Paleta.TEKST)), new Rozkaz.ZmianaPostawy(postawa)));
