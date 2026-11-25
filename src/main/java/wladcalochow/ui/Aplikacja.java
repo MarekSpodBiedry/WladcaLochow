@@ -1585,7 +1585,7 @@ public final class Aplikacja {
         opcje.add(wierszBilansu("Wydatki", Wiersze.komorka(Wiersze.g(zeZnakiem(-bilans.wydatki()), Paleta.CZERWIEN)),
                 String.join(" · ", wydatki)));
 
-        String porazki = "porażki z rzędu: " + loch.getPorazkiZRzedu() + " z " + Loch.PORAZKI_DO_UPADKU;
+        String porazki = "porażki bez wygranej: " + loch.getPorazkiZRzedu() + " z " + Loch.PORAZKI_DO_UPADKU;
         List<Dialog.Kawalek> obrona = switch (bilans.getObrona()) {
             case SPOKOJ -> Wiersze.komorka("spokój", Paleta.ZIELEN);
             case PRZEKUPSTWO -> Wiersze.komorka("przekupieni", Paleta.ZLOTO);

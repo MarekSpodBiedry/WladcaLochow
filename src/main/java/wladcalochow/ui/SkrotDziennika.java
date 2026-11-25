@@ -68,9 +68,12 @@ final class SkrotDziennika {
                 m -> new Skrot("Żołd", "−" + m.group(1) + " (" + m.group(2) + " potworów)"));
         wzor("Zabrakło żołdu dla: (.*)\\. Ich morale spada\\.", m -> new Skrot("Bez żołdu", m.group(1) + " (morale spada)"));
         wzor("Bez żołdu i z fatalnym morale odchodzą z lochu: (.*)\\.", m -> new Skrot("Odeszli", m.group(1)));
-        wzor("Przegrane obrony z rzędu: (\\d+) z (\\d+)\\..*",
-                m -> new Skrot("Porażki", m.group(1) + " z " + m.group(2) + " z rzędu, przy " + m.group(2) + ". loch upada"));
-        wzor("Trzecia przegrana obrona z rzędu.*", m -> new Skrot("Koniec", "trzecia porażka z rzędu, loch zdobyty"));
+        // Stare brzmienie („z rzędu”) zostaje dla dzienników z zapisów sprzed zmiany napisu.
+        wzor("(?:Przegrane obrony z rzędu|Porażki bez wygranej): (\\d+) z (\\d+)\\..*",
+                m -> new Skrot("Porażki", m.group(1) + " z " + m.group(2) + " bez wygranej, przy " + m.group(2)
+                        + ". loch upada"));
+        wzor("(?:Trzecia przegrana obrona z rzędu|Trzecia porażka bez wygranej).*",
+                m -> new Skrot("Koniec", "trzecia porażka bez wygranej, loch zdobyty"));
         wzor("Loch opustoszał.*", m -> new Skrot("Koniec", "brak potworów i złota"));
         wzor("(Finanse|Kadry) obejmuje (.*)\\.", m -> new Skrot("Minister", m.group(2) + " (" + m.group(1).toLowerCase() + ")"));
         wzor("Zabrakło na pensję: (.*) odchodzi\\. (.*)\\.", m -> new Skrot("Minister", m.group(1) + " odchodzi bez pensji. "

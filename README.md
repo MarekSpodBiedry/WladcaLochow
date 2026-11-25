@@ -51,7 +51,7 @@ Jeden dzień to kilka naciśnięć klawiszy.
 - **Potwory mają imiona.** Zgrzyt, Purchawka i Rozpruwacz to nie liczby. Kto przeżyje walkę, staje
   się weteranem: bije mocniej, ale chce więcej złota. Strata takiego boli.
 - **Nie da się wygrać, da się tylko przetrwać dłużej.** Bohaterowie rosną w siłę razem z lochem,
-  a czasem przychodzi fala, która zmiata nawet silną obronę. Trzy przegrane obrony z rzędu i loch upada.
+  a czasem przychodzi fala, która zmiata nawet silną obronę. Trzy przegrane obrony bez wygranej pomiędzy i loch upada.
   Kto nic nie robi, przegrywa po kilkudziesięciu dniach; dobrze prowadzony loch trwa setki dni.
 - **Każda rozgrywka jest inna.** Inni kandydaci, inni bohaterowie, inne kłopoty.
 
@@ -199,7 +199,8 @@ Najważniejsze zasady:
   (Chciwy, Plotkarz, Niesłowny, Nielojalny). Pensja to stała kwota plus 3% dziennego przychodu.
 
 Gra nie ma końca. Dobrze prowadzony loch może przetrwać setki dni, ale pech i złe decyzje go niszczą.
-Loch upada po trzech przegranych obronach z rzędu albo gdy nie ma już ani potworów, ani złota.
+Loch upada po trzech przegranych obronach bez wygranej pomiędzy (łapówka ani spokojny dzień nie zerują
+licznika) albo gdy nie ma już ani potworów, ani złota.
 Wynikiem jest liczba przetrwanych dni. Gra zapisuje się sama każdego ranka i po każdym rozkazie.
 
 Gra ma 10 slotów zapisu i nigdy sama ich nie usuwa. Przegrana rozgrywka zostaje w swoim slocie,

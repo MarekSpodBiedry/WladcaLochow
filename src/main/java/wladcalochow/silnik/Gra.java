@@ -310,7 +310,7 @@ public class Gra implements Serializable {
         zdarzenia.addAll(dzien.rozegrajWieczor(loch, los));
         if (loch.czyZdobyty()) {
             koniecGry = true;
-            zdarzenia.add(new Informacja("Trzecia przegrana obrona z rzędu: bohaterowie zdobywają loch. "
+            zdarzenia.add(new Informacja("Trzecia porażka bez wygranej: bohaterowie zdobywają loch. "
                     + "To koniec panowania.", Ton.ALARM));
         } else if (loch.getListaPotworow().isEmpty() && loch.getSkarbiec().czyPusty()) {
             koniecGry = true;
@@ -318,8 +318,9 @@ public class Gra implements Serializable {
                     Ton.ALARM));
         } else if (loch.getPorazkiZRzedu() > 0 && dzien.getWalka() != null
                 && dzien.getWalka().getWynik() == Walka.Wynik.OBRONA_PRZEGRANA) {
-            zdarzenia.add(new Informacja("Przegrane obrony z rzędu: " + loch.getPorazkiZRzedu() + " z "
-                    + Loch.PORAZKI_DO_UPADKU + ". Przy trzeciej loch upadnie.", Ton.ALARM));
+            zdarzenia.add(new Informacja("Porażki bez wygranej: " + loch.getPorazkiZRzedu() + " z "
+                    + Loch.PORAZKI_DO_UPADKU + ". Licznik zeruje tylko wygrana obrona. Przy trzeciej loch upadnie.",
+                    Ton.ALARM));
         }
         loguj(zdarzenia);
         return zdarzenia;

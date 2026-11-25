@@ -44,7 +44,8 @@ final class Doradca {
             new Strona("Kim jesteś", List.of(
                     "Jesteś Władcą Lochów. Masz skarbiec ze złotem i potwory na żołdzie. "
                             + "Bohaterowie chcą to złoto zabrać.",
-                    "Cel: przetrwać jak najwięcej dni. Loch upada po trzech przegranych obronach z rzędu.",
+                    "Cel: przetrwać jak najwięcej dni. Loch upada po trzech przegranych obronach bez wygranej pomiędzy. "
+                            + "Łapówka ani spokojny dzień nie zerują tego licznika, tylko wygrana obrona.",
                     "Nie walczysz sam i nie sterujesz potworami. Ty rządzisz: wybierasz ministrów "
                             + "i wydajesz rozkazy, a reszta dzieje się sama.")),
             new Strona("Jak mija dzień", List.of(
@@ -116,7 +117,7 @@ final class Doradca {
             case 2 -> "Pilnuj, żeby starczało na żołd. Potwór bez wypłaty traci morale, a z morale poniżej 10% "
                     + "odchodzi z lochu. Jutro spodziewaj się pierwszego gościa.";
             case 3 -> "Kto przeżył walkę, zdobywa doświadczenie i z czasem awansuje (★): rośnie w siłę, ale chce "
-                    + "wyższego żołdu. Trzy przegrane obrony z rzędu oznaczają koniec gry.";
+                    + "wyższego żołdu. Trzy przegrane obrony bez wygranej pomiędzy oznaczają koniec gry.";
             case 4 -> "Czytaj poranny raport zwiadu w dzienniku: mówi, ilu bohaterów się zbliża "
                     + "i ile kosztowałoby ich przekupienie.";
             default -> null;

@@ -88,4 +88,14 @@ class OdtwarzanieTest {
                 SkrotDziennika.skroc("Rozkaz: Kopalnia ma teraz poziom 1. Koszt: 70 złota."));
         assertEquals("", SkrotDziennika.skroc("Coś zupełnie nowego.").etykieta(), "nieznane zdanie zostaje bez zmian");
     }
+
+    @Test
+    void licznikPorazekToPorazkiBezWygranej() {
+        SkrotDziennika.Skrot oczekiwany = new SkrotDziennika.Skrot("Porażki", "2 z 3 bez wygranej, przy 3. loch upada");
+        assertEquals(oczekiwany, SkrotDziennika.skroc("Porażki bez wygranej: 2 z 3. Licznik zeruje tylko wygrana obrona. "
+                + "Przy trzeciej loch upadnie."));
+        assertEquals(oczekiwany, SkrotDziennika.skroc("Przegrane obrony z rzędu: 2 z 3. Przy trzeciej loch upadnie."),
+                "dzienniki ze starych zapisów nadal dostają skrót");
+        assertEquals("Koniec", SkrotDziennika.skroc("Trzecia porażka bez wygranej: bohaterowie zdobywają loch.").etykieta());
+    }
 }

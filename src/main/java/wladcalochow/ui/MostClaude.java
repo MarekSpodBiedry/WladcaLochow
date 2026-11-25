@@ -121,9 +121,9 @@ final class MostClaude {
         if (loch.getWydobycieDoOdebrania() > 0) {
             s.append("Z kopalni wpłynie dziś rano: +").append(loch.getWydobycieDoOdebrania()).append('\n');
         }
-        s.append("Przegrane obrony z rzędu: ").append(loch.getPorazkiZRzedu()).append(" z ")
-                .append(Loch.PORAZKI_DO_UPADKU).append(" (przy ").append(Loch.PORAZKI_DO_UPADKU)
-                .append(". loch upada)\n");
+        s.append("Porażki bez wygranej: ").append(loch.getPorazkiZRzedu()).append(" z ")
+                .append(Loch.PORAZKI_DO_UPADKU).append(" (zeruje je tylko wygrana obrona; przy ")
+                .append(Loch.PORAZKI_DO_UPADKU).append(". loch upada)\n");
         s.append("Postawa: ").append(loch.getPostawa().nazwa()).append('\n');
         s.append("Limit rekrutacji: ").append(loch.getLimitRekrutacji()).append("% skarbca\n");
         s.append("Minister Finansów: ").append(opis(loch.getMinisterFinansow())).append('\n');
