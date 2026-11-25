@@ -72,6 +72,11 @@ public class BilansDnia implements Serializable {
         skradzione += Math.max(0, kwota);
     }
 
+    /** Potwór zwolniony przez pomyłkę stażystki kadr. */
+    void zwolnionyPrzezPomylke(Potwor potwor) {
+        odeszli.add(potwor.getImie());
+    }
+
     void pladrowanie(int kwota) {
         spladrowane += kwota;
     }

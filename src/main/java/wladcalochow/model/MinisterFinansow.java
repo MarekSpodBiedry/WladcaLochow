@@ -113,6 +113,11 @@ public abstract class MinisterFinansow implements Serializable {
         return imie;
     }
 
+    /** Darmowy stażysta (zastępstwo po ministrze, który odszedł): bez pensji, ale czasem coś pomyli. */
+    public boolean czyStazysta() {
+        return pensja == 0;
+    }
+
     public int getPensja() {
         return pensja;
     }

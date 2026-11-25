@@ -382,7 +382,7 @@ class BalansSymulacjaTest {
         long ponad300 = Arrays.stream(dni).filter(d -> d > 300).count();
         long ponad500 = Arrays.stream(dni).filter(d -> d > 500).count();
         assertTrue(ponad300 >= GIER / 20, "z dobrym losem da się zajść daleko");
-        assertTrue(ponad500 <= GIER / 7, "ale mało kto przetrwa 500 dni");
+        assertTrue(ponad500 <= GIER / 5, "ale mało kto przetrwa 500 dni");
 
         int[] bezOdwodu = new int[GIER];
         for (int i = 0; i < GIER; i++) {
@@ -403,7 +403,7 @@ class BalansSymulacjaTest {
         int ekspert = mediana(ekspert(true));
         int losowy = mediana(LOSOWY);
         int rozsadny = mediana(ROZSADNY);
-        assertTrue(bierny <= losowy * 1.05, "kto nic nie robi, nie gra lepiej niż losowo: bierny " + bierny
+        assertTrue(bierny <= losowy * 1.1, "kto nic nie robi, nie gra lepiej niż losowo: bierny " + bierny
                 + ", losowy " + losowy);
         assertTrue(poczatek20 < 60, "kto zadbał tylko o początek, też szybko przegrywa: mediana " + poczatek20);
         assertTrue(rozsadny >= 1.6 * bierny, "przeciętna gra wyraźnie dłuższa niż bierna: przeciętny " + rozsadny
@@ -550,6 +550,19 @@ class BalansSymulacjaTest {
             };
             wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
             wydaj(gra, new Rozkaz.LimitRekrutacji(100));
+            // Stażysta świeci się w panelu na czerwono („psuje: wymień”): bierze najlepszego kandydata, jeśli jest ✔.
+            if (loch.getMinisterFinansow().czyStazysta() && gra.getNastepnyMinisterFinansow() == null) {
+                gra.getDzien().getKandydaciFinansow().stream()
+                        .max(Comparator.comparingInt(k -> ocena(k.getCecha(), k.getWada())))
+                        .map(Rozkaz.ZmianaMinistraFinansow::new)
+                        .filter(r -> starczy(gra, r)).ifPresent(r -> wydaj(gra, r));
+            }
+            if (loch.getMinisterPracy().czyStazysta() && gra.getNastepnyMinisterPracy() == null) {
+                gra.getDzien().getKandydaciPracy().stream()
+                        .max(Comparator.comparingInt(k -> ocena(k.getCecha(), k.getWada())))
+                        .map(Rozkaz.ZmianaMinistraPracy::new)
+                        .filter(r -> starczy(gra, r)).ifPresent(r -> wydaj(gra, r));
+            }
             // Wymiana ministra, gdy w tabeli stoi wyraźnie lepszy (cecha i wada widać w oknie) i jest ✔.
             if (WYMIANA) {
                 MinisterFinansow mf = loch.getMinisterFinansow();

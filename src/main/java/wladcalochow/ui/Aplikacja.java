@@ -552,7 +552,7 @@ public final class Aplikacja {
         boolean stazystaP = pracy.getPensja() == 0;
         linia(e, tx, y + 1, tw, Sprite.FINANSE + " Finanse: " + finansow.getImie(),
                 stazystaF ? Paleta.CZERWIEN : Paleta.TEKST, true);
-        linia(e, tx + 3, y + 2, tw - 3, stazystaF ? "zastępstwo, bez cech: wymień (M)"
+        linia(e, tx + 3, y + 2, tw - 3, stazystaF ? "zastępstwo, psuje: wymień (M)"
                 : finansow.nazwaRodzaju() + ", pensja " + finansow.getPensja() + ", zniżki "
                 + procent(finansow.getNegocjacje()) + "%", stazystaF ? Paleta.CZERWIEN : Paleta.TEKST_SLABY, false);
         if (gra.getNastepnyMinisterFinansow() != null) {
@@ -563,7 +563,7 @@ public final class Aplikacja {
         }
         linia(e, tx, y + 4, tw, Sprite.KADRY + " Kadry: " + pracy.getImie(),
                 stazystaP ? Paleta.CZERWIEN : Paleta.TEKST, true);
-        linia(e, tx + 3, y + 5, tw - 3, stazystaP ? "zastępstwo, bez cech: wymień (M)"
+        linia(e, tx + 3, y + 5, tw - 3, stazystaP ? "zastępstwo, psuje: wymień (M)"
                 : pracy.nazwaRodzaju() + ", pensja " + pracy.getPensja(),
                 stazystaP ? Paleta.CZERWIEN : Paleta.TEKST_SLABY, false);
         linia(e, tx + 3, y + 6, tw - 3, "werbunek +" + pracy.getWerbunek() + ", kopalnia +"

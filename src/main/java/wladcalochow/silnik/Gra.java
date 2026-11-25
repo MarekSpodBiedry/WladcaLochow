@@ -142,6 +142,10 @@ public class Gra implements Serializable {
             dzien.ustawLimitRozkazow(Samouczek.rozkazyNaDzien(numerDnia));
         }
         loguj(dzien.przyjmijPrzychod(loch));
+        if (dzien.czyWygadanySkarbiec()) {
+            loguj(new Informacja(loch.getMinisterFinansow().getImie() + " wygadał się w karczmie, ile złota jest "
+                    + "w skarbcu. Dziś przyjdzie więcej bohaterów.", Ton.ALARM));
+        }
         OcenaAtaku ocena = ocenaAtaku();
         loguj(new Informacja(dzien.getRaport().opis()
                 + (ocena == OcenaAtaku.SPOKOJ ? "" : " Ocena: " + ocena.nazwa() + "."),

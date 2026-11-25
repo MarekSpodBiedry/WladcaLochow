@@ -53,6 +53,7 @@ public final class GeneratorZdarzen {
 
         List<Bohater> bohaterowie;
         RaportZwiadu raport;
+        boolean wygadany = false;
         if (samouczek && numer == Samouczek.DZIEN_PIERWSZEGO_ATAKU) {
             Bohater giermek = FabrykaIstot.giermek(los, new HashSet<>());
             bohaterowie = List.of(giermek);
@@ -61,8 +62,11 @@ public final class GeneratorZdarzen {
             // Plotkarz rozpowiada o lochu: ataki są silniejsze.
             boolean plotkarz = loch.getMinisterFinansow().ma(WadaMinistra.PLOTKARZ)
                     || loch.getMinisterPracy().ma(WadaMinistra.PLOTKARZ);
+            // Stażysta finansów czasem wygada się w karczmie, ile złota leży w skarbcu.
+            wygadany = loch.getMinisterFinansow().czyStazysta() && los.nextDouble() < SZANSA_WYGADANIA;
+            double mnoznik = (plotkarz ? 1 + PLOTKI : 1) * (wygadany ? 1 + WYGADANIE : 1);
             bohaterowie = losujBohaterow(numer, loch.getSkarbiec().getZloto(), loch.getListaPotworow(),
-                    loch.getPostawa() == Postawa.ODWOD, plotkarz ? 1 + PLOTKI : 1, los);
+                    loch.getPostawa() == Postawa.ODWOD, mnoznik, los);
             boolean nieslowny = loch.getMinisterFinansow().ma(WadaMinistra.NIESLOWNY)
                     || loch.getMinisterPracy().ma(WadaMinistra.NIESLOWNY);
             raport = zwiad(bohaterowie, los, loch.mnoznikLapowki(), nieslowny);
@@ -70,10 +74,19 @@ public final class GeneratorZdarzen {
         Set<String> ministrowie = new HashSet<>();
         ministrowie.add(loch.getMinisterFinansow().getImie());
         ministrowie.add(loch.getMinisterPracy().getImie());
-        return new DzienGry(numer, dochod, kandydaci, bohaterowie,
+        DzienGry dzien = new DzienGry(numer, dochod, kandydaci, bohaterowie,
                 kandydaciFinansow(los, 2, ministrowie), kandydaciPracy(los, 2, ministrowie), raport,
                 loch.getSkarbiec().getZloto());
+        if (wygadany) {
+            dzien.wygadanySkarbiec();
+        }
+        return dzien;
     }
+
+    /** Dzienna szansa, że stażysta finansów wygada się o skarbcu. */
+    public static final double SZANSA_WYGADANIA = 0.15;
+    /** O ile silniejszy jest atak w dniu, w którym stażysta się wygadał. */
+    public static final double WYGADANIE = 0.50;
 
     /**
      * Siła ataku rośnie razem z siłą lochu, a nie bez końca z numerem dnia. Bohaterowie dobierają się tak,

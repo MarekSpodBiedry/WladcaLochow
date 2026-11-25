@@ -32,6 +32,8 @@ public class DzienGry implements Serializable {
     public static final int MAX_PORANKOW_RANNEGO = 4;
 
     private final int numer;
+    /** Stażysta finansów wygadał się w karczmie o skarbcu: dzisiejszy atak jest silniejszy. */
+    private boolean wygadanySkarbiec;
     private final int dochodBazowy;
     private final List<Potwor> kandydaci;
     private final List<Bohater> bohaterowie;
@@ -104,6 +106,7 @@ public class DzienGry implements Serializable {
 
         odejsciaNielojalnych(loch, los, zdarzenia);
         wyplacPensje(loch, zdarzenia);
+        wpadkiStazystow(loch, los, zdarzenia);
         rekrutuj(loch, zdarzenia);
 
         boolean medyk = loch.getMinisterPracy().ma(CechaMinistra.MEDYK);
@@ -136,14 +139,41 @@ public class DzienGry implements Serializable {
         if (loch.getMinisterFinansow().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
             bilans.odszedlMinister(loch.getMinisterFinansow().getImie() + " (finanse, nielojalny)");
             zdarzenia.add(new Informacja(loch.getMinisterFinansow().getImie() + " znika bez słowa (nielojalny). "
-                    + "Finanse przejmuje darmowy stażysta.", Ton.ALARM));
+                    + "Finanse przejmuje darmowy stażysta, który lubi się wygadać.", Ton.ALARM));
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
         }
         if (loch.getMinisterPracy().ma(WadaMinistra.NIELOJALNY) && los.nextDouble() < SZANSA_ODEJSCIA_NIELOJALNEGO) {
             bilans.odszedlMinister(loch.getMinisterPracy().getImie() + " (kadry, nielojalny)");
             zdarzenia.add(new Informacja(loch.getMinisterPracy().getImie() + " znika bez słowa (nielojalny). "
-                    + "Kadry przejmuje darmowa stażystka.", Ton.ALARM));
+                    + "Kadry przejmuje darmowa stażystka, która myli listy.", Ton.ALARM));
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
+        }
+    }
+
+    public boolean czyWygadanySkarbiec() {
+        return wygadanySkarbiec;
+    }
+
+    public void wygadanySkarbiec() {
+        wygadanySkarbiec = true;
+    }
+
+    /** Dzienna szansa, że stażystka kadr pomyli listy i zwolni potwora. */
+    public static final double SZANSA_WPADKI_STAZYSTKI = 0.07;
+
+    /**
+     * Darmowa stażystka nie jest za darmo: czasem zwalnia przez pomyłkę. Bez wpadek opłacało się celowo nie
+     * płacić pensji ministrom (pomiar: same stażyści 215 dni wobec 176 z płatnymi ministrami bez wymiany).
+     */
+    private void wpadkiStazystow(Loch loch, Random los, List<Zdarzenie> zdarzenia) {
+        MinisterPracy pracy = loch.getMinisterPracy();
+        List<Potwor> zdolni = loch.zdolni();
+        if (pracy.czyStazysta() && !zdolni.isEmpty() && los.nextDouble() < SZANSA_WPADKI_STAZYSTKI) {
+            Potwor zwolniony = zdolni.get(los.nextInt(zdolni.size()));
+            loch.usun(zwolniony);
+            bilans.zwolnionyPrzezPomylke(zwolniony);
+            zdarzenia.add(new Informacja(pracy.getImie() + " pomyliła listy i zwolniła z lochu: "
+                    + zwolniony.getImie() + ".", Ton.ALARM));
         }
     }
 
@@ -157,7 +187,7 @@ public class DzienGry implements Serializable {
             loch.setMinisterFinansow(new RozrzutnyMinisterFinansow("Stażysta Wicek", 0, 0.0));
             bilans.odszedlMinister(finansow.getImie() + " (finanse, brak pensji)");
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + finansow.getImie() + " odchodzi. "
-                    + "Finanse przejmuje darmowy stażysta.", Ton.ALARM));
+                    + "Finanse przejmuje darmowy stażysta, który lubi się wygadać.", Ton.ALARM));
         }
         MinisterPracy pracy = loch.getMinisterPracy();
         int pensjaPracy = pracy.pensjaDnia(bilans.przychody());
@@ -167,7 +197,7 @@ public class DzienGry implements Serializable {
             loch.setMinisterPracy(new BylejakiMinisterPracy("Stażystka Bronka", 0, 0, 0.0));
             bilans.odszedlMinister(pracy.getImie() + " (kadry, brak pensji)");
             zdarzenia.add(new Informacja("Zabrakło na pensję: " + pracy.getImie() + " odchodzi. "
-                    + "Kadry przejmuje darmowa stażystka.", Ton.ALARM));
+                    + "Kadry przejmuje darmowa stażystka, która myli listy.", Ton.ALARM));
         }
     }
 
