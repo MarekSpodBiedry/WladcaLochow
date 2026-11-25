@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -595,7 +596,7 @@ public final class Aplikacja {
             ux += 2;
         }
 
-        List<Potwor> potwory = loch.getListaPotworow();
+        List<Potwor> potwory = wedlugMocy(loch.getListaPotworow());
         e.ramka(x, y + 12, w, h - 12, Paleta.RAMKA, Paleta.PANEL,
                 "Potwory " + potwory.size() + "/" + Loch.POJEMNOSC, Paleta.ZIELEN);
         listaIstot(e, x + 1, y + 13, w - 2, h - 14, potwory, null);
@@ -1996,21 +1997,34 @@ public final class Aplikacja {
         return p.czyWKopalni() ? Wiersze.komorka("w kopalni", Paleta.TURKUS) : Wiersze.komorka("", Paleta.TEKST);
     }
 
+    /** Moc potwora w walce: ta sama miara, którą gra wycenia obronę lochu (siła, życie i rodzaj). */
+    static int moc(Potwor p) {
+        return DzienGry.wartoscOddzialu(List.of(p));
+    }
+
+    /** Potwory od najsilniejszego. Numery P1.. dla Claude'a nadal idą według kolejności w lochu. */
+    static List<Potwor> wedlugMocy(List<Potwor> potwory) {
+        List<Potwor> posortowane = new ArrayList<>(potwory);
+        posortowane.sort(Comparator.comparingInt(Aplikacja::moc).reversed());
+        return posortowane;
+    }
+
     private void dialogPotwory() {
         List<Dialog.Opcja> opcje = new ArrayList<>();
-        List<Potwor> potwory = gra.getLoch().getListaPotworow();
+        List<Potwor> potwory = wedlugMocy(gra.getLoch().getListaPotworow());
         if (potwory.isEmpty()) {
             opcje.add(new Dialog.Opcja("Loch jest pusty", "Nie masz żadnego potwora.", false, () -> {
             }));
         } else {
-            opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Potwór", "Rodzaj", "Poziom", "Siła", "Życie", "Morale",
-                    "Żołd", ""), null));
+            opcje.add(Dialog.Opcja.info(0, Wiersze.naglowki("Potwór", "Rodzaj", "Poziom", "Moc", "Siła", "Życie",
+                    "Morale", "Żołd", ""), null));
         }
         for (Potwor p : potwory) {
             opcje.add(Dialog.Opcja.wiersz(0, Wiersze.wiersz(
                     Wiersze.komorka(Wiersze.k(Sprite.emoji(p) + " ", Paleta.TEKST), Wiersze.g(p.getImie(), Paleta.TEKST)),
                     Wiersze.komorka(p.nazwaRodzaju(), Paleta.TEKST_SLABY),
                     Wiersze.komorka(Wiersze.k("★" + p.getPoziom(), Paleta.ZLOTO)),
+                    Wiersze.komorka(Wiersze.g(String.valueOf(moc(p)), Paleta.TEKST)),
                     Wiersze.komorka(String.valueOf(p.getSilaAtaku()), Paleta.TEKST),
                     Wiersze.komorka(String.valueOf(p.getMaxPunktyZycia()), Paleta.TEKST),
                     Wiersze.komorka(p.getMorale() + "/" + p.getMaxMorale(),
@@ -2021,7 +2035,7 @@ public final class Aplikacja {
         dialog = Dialog.zLiniami("Potwory w lochu",
                 List.of(pasekRozkazow(), Dialog.Linia.tekst("Wybierz potwora, żeby dać mu premię albo go zwolnić.",
                         Paleta.TEKST_SLABY)),
-                opcje, this::zamknijDialog).ukrywaj(0, 1, 7);
+                opcje, this::zamknijDialog).ukrywaj(0, 1, 8);
     }
 
     private void dialogPotwor(Potwor potwor) {
