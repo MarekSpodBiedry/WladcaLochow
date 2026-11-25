@@ -59,7 +59,9 @@ final class Doradca {
                     "Po prawej: ministrowie i potwory. ★ to poziom, ♥ życie, ☻ morale.",
                     "Na dole: przyciski. Naciśnij literę z przycisku albo kliknij go myszką. "
                             + "Zielony przycisk (Enter) zawsze przesuwa grę dalej.",
-                    "Nad dziennikiem zawsze jest podpowiedź, co możesz teraz zrobić.")),
+                    "Nad dziennikiem zawsze jest podpowiedź, co możesz teraz zrobić.",
+                    "Klawisz E rano włącza i wyłącza rady eksperta: co zrobiłby w tej sytuacji doświadczony "
+                            + "gracz. To nauka gry, nie obowiązek.")),
             new Strona("Na co uważać", List.of(
                     "Żołd: potwór bez wypłaty traci morale, a z morale poniżej 10% odchodzi z lochu.",
                     "Bogactwo: im więcej złota w skarbcu i im późniejszy dzień, tym silniejsi bohaterowie.",

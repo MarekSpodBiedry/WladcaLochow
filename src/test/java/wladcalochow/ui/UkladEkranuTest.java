@@ -194,7 +194,8 @@ class UkladEkranuTest {
                 widziane.add(ekran);
             }
         }
-        assertFalse(tekst.contains("…"), "przycięty tekst: " + opis);
+        // „… i jeszcze N” to celowy skrót listy istot (np. przy włączonych radach eksperta), a nie przycięty tekst.
+        assertFalse(tekst.replace("… i jeszcze", "").contains("…"), "przycięty tekst: " + opis);
         assertEquals(0, klatka.pozaEkranem(), "tekst poza ekranem: " + opis);
         List<int[]> strefy = aplikacja.prostokatyStref();
         for (int i = 0; i < strefy.size(); i++) {

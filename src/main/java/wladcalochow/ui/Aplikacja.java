@@ -31,6 +31,7 @@ import wladcalochow.model.strategia.RodzajRozkazu;
 import wladcalochow.model.strategia.Rozkaz;
 import wladcalochow.model.strategia.Ulepszenie;
 import wladcalochow.model.strategia.WadaMinistra;
+import wladcalochow.silnik.Ekspert;
 import wladcalochow.silnik.Gra;
 import wladcalochow.silnik.ZapisGry;
 
@@ -94,6 +95,8 @@ public final class Aplikacja {
     private boolean koniec;
     /** Walka toczy się sama. Klawisz A przełącza na ruchy po Enterze i z powrotem. */
     private boolean auto = true;
+    /** Panel „Co zrobiłby ekspert” (klawisz E): nauka gry, domyślnie wyłączony, żeby gracz kombinował sam. */
+    private boolean radyEksperta;
     private Istota aktor;
     private Istota cel;
     private int przewiniecie;
@@ -430,6 +433,7 @@ public final class Aplikacja {
         if (tryb == Tryb.PORANEK) {
             // Na pasku nie ma już miejsca, więc Claude'a włącza i wyłącza sam klawisz C (podpowiedź w dzienniku).
             skroty.put('c', this::przelaczClaude);
+            skroty.put('e', this::przelaczRadyEksperta);
         }
     }
 
@@ -596,11 +600,56 @@ public final class Aplikacja {
             ux += 2;
         }
 
+        // Na dole rady eksperta (gdy gracz je włączył klawiszem E), nad nimi potwory.
+        List<String[]> rady = radyEksperta && tryb == Tryb.PORANEK ? radyDoPanelu() : List.of();
+        int wysRad = radyEksperta && tryb == Tryb.PORANEK ? 2 + Math.max(1, 2 * rady.size()) : 0;
+        int wysPotworow = h - 12 - wysRad;
         List<Potwor> potwory = wedlugMocy(loch.getListaPotworow());
-        e.ramka(x, y + 12, w, h - 12, Paleta.RAMKA, Paleta.PANEL,
+        e.ramka(x, y + 12, w, wysPotworow, Paleta.RAMKA, Paleta.PANEL,
                 "Potwory " + potwory.size() + "/" + Loch.POJEMNOSC, Paleta.ZIELEN);
-        listaIstot(e, x + 1, y + 13, w - 2, h - 14, potwory, null);
-        legenda(e, x, y + h - 1, w, "★ poziom  ♥ życie  ☻ morale");
+        listaIstot(e, x + 1, y + 13, w - 2, wysPotworow - 2, potwory, null);
+        legenda(e, x, y + 12 + wysPotworow - 1, w, "★ poziom  ♥ życie  ☻ morale");
+        if (wysRad > 0) {
+            int ry = y + 12 + wysPotworow;
+            e.ramka(x, ry, w, wysRad, Paleta.RAMKA, Paleta.PANEL, "Co zrobiłby ekspert", Paleta.TURKUS);
+            if (rady.isEmpty()) {
+                linia(e, tx, ry + 1, tw, "nic nie zmieniaj · Enter: start dnia", Paleta.TEKST_SLABY, false);
+            }
+            for (int i = 0; i < rady.size(); i++) {
+                int px2 = e.pisz(tx, ry + 1 + 2 * i, rady.get(i)[0] + "  ", Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
+                linia(e, px2, ry + 1 + 2 * i, tw - (px2 - tx), rady.get(i)[1], Paleta.TEKST, true);
+                linia(e, tx + 3, ry + 2 + 2 * i, tw - 3, rady.get(i)[2], Paleta.TEKST_SLABY, false);
+            }
+            legenda(e, x, ry + wysRad - 1, w, "E: ukryj");
+        }
+    }
+
+    /**
+     * Rady eksperta na dziś: klawisz okna, w którym wydaje się rozkaz, krótka nazwa i powód. Tylko tyle,
+     * ile zostało rozkazów: tyle wydałby ekspert.
+     */
+    private List<String[]> radyDoPanelu() {
+        List<Ekspert.Rada> rady = Ekspert.rady(gra);
+        int ile = Math.min(rady.size(), gra.getDzien().getPozostaleRozkazy());
+        List<String[]> wiersze = new ArrayList<>();
+        for (Ekspert.Rada rada : rady.subList(0, ile)) {
+            wiersze.add(switch (rada.rozkaz()) {
+                case Rozkaz.ZmianaPostawy r -> new String[] {"P", "Postawa: " + r.postawa().nazwa(), rada.powod()};
+                case Rozkaz.ZakupUlepszenia r -> new String[] {"U", r.ulepszenie().nazwa() + " → poziom "
+                        + (gra.getLoch().poziom(r.ulepszenie()) + 1), rada.powod()};
+                case Rozkaz.LimitRekrutacji r -> new String[] {"B", "Rekrutacja do " + r.procent() + "%", rada.powod()};
+                case Rozkaz.ZmianaMinistraFinansow r -> new String[] {"M", "Finanse: " + r.nowy().getImie(), rada.powod()};
+                case Rozkaz.ZmianaMinistraPracy r -> new String[] {"M", "Kadry: " + r.nowy().getImie(), rada.powod()};
+                case Rozkaz.Zwolnienie r -> new String[] {"O", "Zwolnij: " + r.potwor().getImie(), rada.powod()};
+                case Rozkaz.Szpital r -> new String[] {"O", "Szpital: " + r.potwor().getImie(), rada.powod()};
+                case Rozkaz.Premia r -> new String[] {"O", "Premia: " + r.potwor().getImie(), rada.powod()};
+            });
+        }
+        return wiersze;
+    }
+
+    private void przelaczRadyEksperta() {
+        radyEksperta = !radyEksperta;
     }
 
     /** Objaśnienie symboli wpisane w dolną krawędź ramki. */
@@ -775,7 +824,14 @@ public final class Aplikacja {
 
     private void dziennik(Ekran e, int x, int y, int w, int h) {
         e.ramka(x, y, w, h, Paleta.RAMKA, Paleta.PANEL, "Dziennik", Paleta.POMARANCZ);
-        String podpowiedz = " " + Ekran.przytnij(coTeraz(), w - 17) + " ";
+        String coTeraz = coTeraz();
+        // Klawisz E (rady eksperta) podpowiadamy tylko rano i tylko wtedy, gdy podpowiedź się zmieści.
+        String zEkspertem = coTeraz + " · E: rady eksperta";
+        if (tryb == Tryb.PORANEK && !radyEksperta && czekamNa == null && !claudeGra
+                && Ekran.szerokosc(zEkspertem) <= w - 17) {
+            coTeraz = zEkspertem;
+        }
+        String podpowiedz = " " + Ekran.przytnij(coTeraz, w - 17) + " ";
         e.pisz(x + w - Ekran.szerokosc(podpowiedz) - 2, y, podpowiedz, Paleta.ZLOTO, Ekran.BEZ_ZMIAN, true);
         int wiersze = h - 2;
         List<WierszDziennika> linie = linieDziennika(gra.getDziennik(), w - 4);

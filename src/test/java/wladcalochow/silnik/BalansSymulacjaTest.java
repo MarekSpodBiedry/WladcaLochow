@@ -121,128 +121,29 @@ class BalansSymulacjaTest {
         }
     };
 
-    /**
-     * Strategia subagenta, który przetrwał 130+ dni: ulepszenia szybko i do końca, silne potwory w obronie
-     * (słabe zwalniane, gdy w kolejce czeka ktoś silniejszy), łapówka przy wyrównanym ataku, odwód przy
-     * słabym ataku (chroni weteranów). Korzysta tylko z tego, co widzi gracz: zwiadu i statystyk własnych potworów.
-     */
-    /** Ocena cechy i wady ministra z punktu widzenia doświadczonego gracza (bez liczenia przyszłości). */
+    /** Ocena cechy i wady ministra: ta sama, której używa ekspert w grze (silnik.Ekspert). */
     static int ocena(wladcalochow.model.strategia.CechaMinistra cecha, wladcalochow.model.strategia.WadaMinistra wada) {
-        int punkty = cecha == null ? 0 : switch (cecha) {
-            case NEGOCJATOR, MEDYK -> 3;
-            case NADZORCA, LICHWIARZ -> 2;
-            case TRENER, WERBOWNIK -> 1;
-        };
-        return punkty - (wada == null ? 0 : switch (wada) {
-            case PLOTKARZ -> 3;
-            case NIELOJALNY -> 2;
-            case CHCIWY, NIESLOWNY -> 1;
-        });
+        return Ekspert.ocena(cecha, wada);
     }
 
+    /**
+     * Ekspert: wykonuje rady z silnik.Ekspert (te same, które gracz widzi w panelu „Co zrobiłby ekspert”),
+     * w podanej kolejności, póki starcza rozkazów. Strategia pochodzi od subagenta, który przetrwał 130+ dni.
+     */
     static Gracz ekspert(boolean zOdwodem) {
         return new Gracz() {
             @Override
             public void start(Gra gra) {
-                MinisterFinansow finansow = gra.getStartowiFinansow().stream()
-                        .filter(m -> m instanceof RozrzutnyMinisterFinansow)
-                        .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
-                        .orElse(gra.getStartowiFinansow().get(0));
-                MinisterPracy pracy = gra.getStartowiPracy().stream()
-                        .filter(m -> m instanceof RamboMinisterPracy)
-                        .max(Comparator.comparingInt(m -> ocena(m.getCecha(), m.getWada())))
-                        .orElse(gra.getStartowiPracy().get(0));
-                gra.rozpocznij(finansow, pracy);
-            }
-
-            /** Wymiana ministra, gdy kandydat tego samego stylu ma wyraźnie lepszą cechę i wadę. */
-            private void wymienMinistra(Gra gra, int wolneZloto) {
-                Loch loch = gra.getLoch();
-                MinisterFinansow mf = loch.getMinisterFinansow();
-                for (MinisterFinansow k : gra.getDzien().getKandydaciFinansow()) {
-                    Rozkaz r = new Rozkaz.ZmianaMinistraFinansow(k);
-                    if (k instanceof RozrzutnyMinisterFinansow && gra.getNastepnyMinisterFinansow() == null
-                            && ocena(k.getCecha(), k.getWada()) >= ocena(mf.getCecha(), mf.getWada()) + 2
-                            && gra.koszt(r) <= wolneZloto) {
-                        wydaj(gra, r);
-                        return;
-                    }
-                }
-                MinisterPracy mp = loch.getMinisterPracy();
-                for (MinisterPracy k : gra.getDzien().getKandydaciPracy()) {
-                    Rozkaz r = new Rozkaz.ZmianaMinistraPracy(k);
-                    if (k instanceof RamboMinisterPracy && gra.getNastepnyMinisterPracy() == null
-                            && ocena(k.getCecha(), k.getWada()) >= ocena(mp.getCecha(), mp.getWada()) + 2
-                            && gra.koszt(r) <= wolneZloto) {
-                        wydaj(gra, r);
-                        return;
-                    }
-                }
+                gra.rozpocznij(Ekspert.startowyFinansow(gra.getStartowiFinansow()),
+                        Ekspert.startowyPracy(gra.getStartowiPracy()));
             }
 
             @Override
             public void poranek(Gra gra, Random bot) {
-                Loch loch = gra.getLoch();
-                int zloto = loch.getSkarbiec().getZloto();
-                int pensje = loch.getMinisterFinansow().getPensja() + loch.getMinisterPracy().getPensja();
-                int rezerwa = pensje + loch.dziennyKosztZoldu() * 2 / 3;
-                RaportZwiadu raport = gra.getDzien().getRaport();
-                List<Potwor> potwory = loch.getListaPotworow();
-                int obrona = wladcalochow.model.DzienGry.wartoscOddzialu(potwory) * 2 / 3;
-
-                Postawa postawa = Postawa.PELNA_OBRONA;
-                if (raport.maxBohaterow() > 0) {
-                    boolean groznie = raport.szacowanaSila() >= obrona * 0.8;
-                    if (groznie && raport.szacowanaSila() <= zloto - pensje) {
-                        postawa = Postawa.PRZEKUPSTWO;
-                        zloto -= raport.szacowanaSila();
-                    } else if (zOdwodem && raport.szacowanaSila() < obrona * 0.8) {
-                        postawa = Postawa.ODWOD;
+                for (Ekspert.Rada rada : Ekspert.rady(gra, zOdwodem)) {
+                    if (gra.getDzien().maRozkazy() && gra.powodOdmowy(rada.rozkaz()) == null) {
+                        gra.wykonajRozkaz(rada.rozkaz());
                     }
-                }
-                wydaj(gra, new Rozkaz.ZmianaPostawy(postawa));
-
-                // Najtańszy dostępny poziom spośród kopalni i pułapek, potem zamek.
-                List<Ulepszenie> kolejnosc = new ArrayList<>(List.of(Ulepszenie.KOPALNIA, Ulepszenie.PULAPKI));
-                kolejnosc.sort(Comparator.comparingInt(u -> loch.poziom(u)));
-                kolejnosc.add(Ulepszenie.ZAMEK_SKARBCA);
-                for (Ulepszenie u : kolejnosc) {
-                    Rozkaz zakup = new Rozkaz.ZakupUlepszenia(u);
-                    if (gra.powodOdmowy(zakup) == null && gra.koszt(zakup) <= zloto - pensje) {
-                        wydaj(gra, zakup);
-                        zloto -= gra.koszt(zakup);
-                        break;
-                    }
-                }
-                wydaj(gra, new Rozkaz.LimitRekrutacji(100));
-                wymienMinistra(gra, zloto - rezerwa);
-                // Miejsce dla silniejszych: gdy loch prawie pełny, a w kolejce stoi ktoś mocniejszy od najsłabszego.
-                int najlepszyKandydat = gra.getDzien().getKandydaci().stream().mapToInt(Potwor::moc).max().orElse(0);
-                Potwor najslabszy = potwory.stream().min(Comparator.comparingInt(Potwor::moc)).orElse(null);
-                if (najslabszy != null && potwory.size() >= Loch.POJEMNOSC - 1 && najlepszyKandydat > najslabszy.moc() * 2) {
-                    wydaj(gra, new Rozkaz.Zwolnienie(najslabszy));
-                }
-                // Szpital dla najsilniejszego rannego, gdy atak jest zapowiedziany, a złota starcza ponad zapas.
-                if (raport.maxBohaterow() > 0) {
-                    potwory.stream().filter(Potwor::czyRanny).max(Comparator.comparingInt(Potwor::moc)).ifPresent(r -> {
-                        Rozkaz szpital = new Rozkaz.Szpital(r);
-                        if (gra.powodOdmowy(szpital) == null && gra.koszt(szpital) <= loch.getSkarbiec().getZloto() - rezerwa) {
-                            wydaj(gra, szpital);
-                        }
-                    });
-                }
-                for (Potwor p : potwory) {
-                    Rozkaz premia = new Rozkaz.Premia(p);
-                    if (p.procentMorale() < 0.5 && gra.powodOdmowy(premia) == null && gra.koszt(premia) <= zloto - rezerwa) {
-                        wydaj(gra, premia);
-                        break;
-                    }
-                }
-            }
-
-            private void wydaj(Gra gra, Rozkaz rozkaz) {
-                if (gra.getDzien().maRozkazy() && gra.powodOdmowy(rozkaz) == null) {
-                    gra.wykonajRozkaz(rozkaz);
                 }
             }
         };
